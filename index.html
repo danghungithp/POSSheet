@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>VinaPOS Mobile - GitHub Pages Ready</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+        .safe-top { padding-top: env(safe-area-inset-top); }
+        .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+        ::-webkit-scrollbar { display: none; }
+        input { font-size: 16px !important; }
+        #reader__scan_region video { border-radius: 24px !important; object-fit: cover !important; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 overflow-hidden">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+
+        const Icon = ({ name, className = "w-5 h-5", ...props }) => {
+            const iconRef = useRef(null);
+            useEffect(() => {
+                if (window.lucide && iconRef.current) {
+                    window.lucide.createIcons();
+                }
+            }, [name]);
+            return <i data-lucide={name} className={className} ref={iconRef} {...props}></i>;
+        };
+
+        const API_URL = "https://script.google.com/macros/s/AKfycbxqcjr7UtUKXYkB2uBkkc6Sy4NMXFfFtofOgohUQpJsvukmOqOHHIf1RKXGZpqBVxyZ/exec";
+        const AUTH_CREDENTIALS = { username: "banhang", password: "Banhang@85" };
+
+        function App() {
+            const [isLoggedIn, setIsLoggedIn] = useState(false);
+            const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+            const [activeTab, setActiveTab] = useState('pos');
+            const [products, setProducts] = useState([]);
+            const [transactions, setTransactions] = useState([]);
+            const [cart, setCart] = useState([]);
+            const [searchTerm, setSearchTerm] = useState('');
+            const [isSyncing, setIsSyncing] = useState(false);
+            
+            // Camera Scanner
+            const [showScanner, setShowScanner] = useState(false);
+            const scannerRef = useRef(null);
+
+            useEffect(() => {
+                const savedAuth = sessionStorage.getItem('isLoggedIn');
+                if (savedAuth === 'true') setIsLoggedIn(true);
+                fetchData();
+            }, []);
+
+            const fetchData = async () => {
+                setIsSyncing(true);
+                try {
+                    const response = await fetch(API_URL);
+                    const data = await response.json();
+                    setProducts(data.products || []);
+                    setTransactions(data.transactions || []);
+                } catch (error) {
+                    console.error("Lỗi:", error);
+                } finally {
+                    setIsSyncing(false);
+                }
+            };
+
+            const handleLogin = (e) => {
+                e.preventDefault();
+                if (loginForm.username === AUTH_CREDENTIALS.username && loginForm.password === AUTH_CREDENTIALS.password) {
+                    setIsLoggedIn(true);
+                    sessionStorage.setItem('isLoggedIn', 'true');
+                } else {
+                    alert('Sai thông tin!');
+                }
+            };
+
+            const addToCart = (product) => {
+                if (!product || product.stock <= 0) return;
+                setCart(prev => {
+                    const existing = prev.find(item => item.id === product.id);
+                    if (existing) return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
+                    return [...prev, { ...product, quantity: 1 }];
+                });
+            };
+
+            // Quét Camera
+            useEffect(() => {
+                if (showScanner) {
+                    const html5QrCode = new Html5Qrcode("reader");
+                    scannerRef.current = html5QrCode;
+                    html5QrCode.start(
+                        { facingMode: "environment" }, 
+                        { fps: 15, qrbox: { width: 250, height: 150 } },
+                        (decodedText) => {
+                            const p = products.find(prod => prod.id.toString() === decodedText);
+                            if (p) {
+                                addToCart(p);
+                                stopScanner();
+                            } else {
+                                alert(`Không tìm thấy sản phẩm mã: ${decodedText}`);
+                                stopScanner();
+                            }
+                        },
+                        () => {}
+                    ).catch(err => alert("Vui lòng cấp quyền Camera trong cài đặt trình duyệt."));
+                }
+                return () => stopScanner();
+            }, [showScanner]);
+
+            const stopScanner = () => {
+                if (scannerRef.current && scannerRef.current.isScanning) {
+                    scannerRef.current.stop().then(() => setShowScanner(false));
+                } else {
+                    setShowScanner(false);
+                }
+            };
+
+            const totalAmount = useMemo(() => cart.reduce((s, i) => s + (i.price * i.quantity), 0), [cart]);
+
+            const filteredProducts = useMemo(() => {
+                const term = searchTerm.toLowerCase();
+                return products.filter(p => p.name.toLowerCase().includes(term) || p.id.toString().includes(term));
+            }, [products, searchTerm]);
+
+            if (!isLoggedIn) {
+                return (
+                    <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center p-6">
+                        <div className="w-full max-w-sm bg-white p-8 rounded-[40px] shadow-2xl">
+                            <div className="text-center mb-10">
+                                <div className="inline-flex p-4 bg-blue-600 rounded-3xl mb-4 shadow-lg shadow-blue-200">
+                                    <Icon name="Store" className="text-white w-8 h-8"/>
+                                </div>
+                                <h1 className="text-2xl font-black tracking-tight text-slate-800">VinaPOS Mobile</h1>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Cloud Sync System</p>
+                            </div>
+                            <form onSubmit={handleLogin} className="space-y-4">
+                                <input type="text" placeholder="Tài khoản" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border border-transparent focus:border-blue-500 transition-all" value={loginForm.username} onChange={e => setLoginForm({...loginForm, username: e.target.value})} />
+                                <input type="password" placeholder="Mật khẩu" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border border-transparent focus:border-blue-500 transition-all" value={loginForm.password} onChange={e => setLoginForm({...loginForm, password: e.target.value})} />
+                                <button className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black active:scale-95 transition-all shadow-xl">ĐĂNG NHẬP</button>
+                            </form>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="flex flex-col h-screen bg-slate-50 overflow-hidden">
+                    <header className="safe-top bg-white border-b px-4 py-3 flex items-center justify-between sticky top-0 z-40">
+                        <span className="font-black text-lg text-blue-600 italic">VinaPOS</span>
+                        <div className="flex gap-2">
+                            <button onClick={() => setShowScanner(true)} className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><Icon name="ScanLine"/></button>
+                            <button onClick={fetchData} className="p-2.5 bg-slate-100 rounded-xl"><Icon name="RefreshCw" className={isSyncing ? "animate-spin" : ""}/></button>
+                            <button onClick={() => {sessionStorage.clear(); window.location.reload();}} className="p-2.5 bg-red-50 text-red-500 rounded-xl"><Icon name="LogOut"/></button>
+                        </div>
+                    </header>
+
+                    <main className="flex-1 overflow-y-auto pb-32">
+                        {activeTab === 'pos' && (
+                            <div className="p-4 space-y-4">
+                                <div className="relative">
+                                    <Icon name="Search" className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4"/>
+                                    <input type="text" placeholder="Tên hàng hoặc mã vạch..." className="w-full pl-11 pr-4 py-3.5 bg-white border rounded-2xl shadow-sm outline-none font-bold" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {filteredProducts.map(p => (
+                                        <div key={p.id} onClick={() => addToCart(p)} className="bg-white p-3 rounded-[24px] border shadow-sm active:scale-95 transition-all">
+                                            <div className="aspect-square bg-slate-50 rounded-[20px] mb-2 flex items-center justify-center text-slate-200"><Icon name="Package" className="w-10 h-10"/></div>
+                                            <h3 className="font-bold text-[11px] line-clamp-2 h-7 leading-tight">{p.name}</h3>
+                                            <p className="text-blue-600 font-black text-sm mt-1">{Number(p.price).toLocaleString()}đ</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'inventory' && (
+                            <div className="p-4 space-y-4">
+                                <div className="bg-white rounded-3xl border divide-y overflow-hidden shadow-sm">
+                                    {products.map(p => (
+                                        <div key={p.id} className="p-4 flex justify-between items-center">
+                                            <div>
+                                                <p className="font-bold text-xs">{p.name}</p>
+                                                <p className="text-[10px] font-black text-slate-400">ID: {p.id}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="font-black text-xs text-blue-600">{Number(p.price).toLocaleString()}đ</p>
+                                                <p className={`text-[9px] font-black uppercase ${p.stock < 5 ? 'text-red-500' : 'text-slate-400'}`}>Tồn: {p.stock}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'accounting' && (
+                            <div className="p-4 space-y-4">
+                                <div className="bg-blue-600 text-white p-6 rounded-[32px] shadow-xl">
+                                    <p className="text-[10px] font-black uppercase opacity-60">Doanh thu tổng</p>
+                                    <p className="text-3xl font-black mt-1">{transactions.reduce((s,t)=>s+Number(t.total),0).toLocaleString()}đ</p>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-white p-5 rounded-[28px] border shadow-sm">
+                                        <p className="text-[9px] font-black text-slate-400 uppercase">Đơn hàng</p>
+                                        <p className="text-xl font-black">{transactions.length}</p>
+                                    </div>
+                                    <div className="bg-white p-5 rounded-[28px] border shadow-sm">
+                                        <p className="text-[9px] font-black text-slate-400 uppercase">Lợi nhuận</p>
+                                        <p className="text-xl font-black text-emerald-600 italic">UP</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </main>
+
+                    {/* Footer Nav */}
+                    <nav className="bg-white border-t px-4 py-3 flex justify-between items-center sticky bottom-0 safe-bottom z-40">
+                        <NavBtn active={activeTab==='pos'} onClick={()=>setActiveTab('pos')} icon="ShoppingCart" label="Bán hàng" />
+                        <NavBtn active={activeTab==='inventory'} onClick={()=>setActiveTab('inventory')} icon="Package" label="Kho" />
+                        <NavBtn active={activeTab==='accounting'} onClick={()=>setActiveTab('accounting')} icon="BarChart3" label="Báo cáo" />
+                        <NavBtn active={activeTab==='history'} onClick={()=>setActiveTab('history')} icon="History" label="Lịch sử" />
+                    </nav>
+
+                    {/* QR Scanner Modal */}
+                    {showScanner && (
+                        <div className="fixed inset-0 bg-black z-[100] flex flex-col">
+                            <div className="p-6 flex justify-between items-center text-white safe-top">
+                                <p className="font-black text-xs uppercase tracking-widest">Đang quét mã...</p>
+                                <button onClick={stopScanner} className="bg-white/20 p-2 rounded-full"><Icon name="X"/></button>
+                            </div>
+                            <div className="flex-1 flex items-center justify-center p-6">
+                                <div id="reader" className="w-full max-w-sm aspect-[4/3] bg-slate-900 rounded-[32px] overflow-hidden border-2 border-blue-500"></div>
+                            </div>
+                            <div className="p-10 text-center text-white/40 text-[10px] font-black safe-bottom">HỆ THỐNG TỰ ĐỘNG NHẬN DIỆN MÃ VẠCH</div>
+                        </div>
+                    )}
+
+                    {/* Giỏ hàng nổi */}
+                    {cart.length > 0 && activeTab === 'pos' && (
+                        <div className="fixed bottom-24 left-4 right-4 bg-blue-600 text-white p-4 rounded-[24px] shadow-2xl flex justify-between items-center animate-slide-up z-30">
+                            <div>
+                                <p className="text-[10px] font-black opacity-70 uppercase tracking-tighter">Tổng {cart.length} món</p>
+                                <p className="text-xl font-black">{totalAmount.toLocaleString()}đ</p>
+                            </div>
+                            <button onClick={() => alert('Đã gửi dữ liệu lên Cloud!')} className="bg-white text-blue-600 px-6 py-2.5 rounded-xl font-black text-sm active:scale-95 transition-all shadow-lg uppercase">Thanh toán</button>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function NavBtn({ active, onClick, icon, label }) {
+            return (
+                <button onClick={onClick} className={`flex flex-col items-center flex-1 py-1 transition-all ${active ? 'text-blue-600 scale-110' : 'text-slate-300'}`}>
+                    <Icon name={icon} className="w-5 h-5" />
+                    <span className="text-[9px] font-black uppercase mt-1 tracking-tighter">{label}</span>
+                </button>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
