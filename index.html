@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>VinaPOS Mobile - GitHub Pages Ready</title>
+    <title>VinaPOS Mobile - Smart Scanning</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -13,16 +13,28 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            -webkit-tap-highlight-color: transparent; 
+            touch-action: manipulation;
+        }
         .safe-top { padding-top: env(safe-area-inset-top); }
         .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
-        ::-webkit-scrollbar { display: none; }
-        input { font-size: 16px !important; }
-        #reader__scan_region video { border-radius: 24px !important; object-fit: cover !important; }
+        
+        .animate-pop-in { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes popIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        #reader video {
+            object-fit: cover !important;
+            border-radius: 24px;
+        }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900 overflow-hidden">
+<body class="bg-[#F1F5F9] text-slate-900 overflow-hidden">
     <div id="root"></div>
 
     <script type="text/babel">
@@ -39,232 +51,219 @@
         };
 
         const API_URL = "https://script.google.com/macros/s/AKfycbxqcjr7UtUKXYkB2uBkkc6Sy4NMXFfFtofOgohUQpJsvukmOqOHHIf1RKXGZpqBVxyZ/exec";
-        const AUTH_CREDENTIALS = { username: "banhang", password: "Banhang@85" };
 
         function App() {
-            const [isLoggedIn, setIsLoggedIn] = useState(false);
-            const [loginForm, setLoginForm] = useState({ username: '', password: '' });
             const [activeTab, setActiveTab] = useState('pos');
             const [products, setProducts] = useState([]);
-            const [transactions, setTransactions] = useState([]);
             const [cart, setCart] = useState([]);
             const [searchTerm, setSearchTerm] = useState('');
             const [isSyncing, setIsSyncing] = useState(false);
-            
-            // Camera Scanner
             const [showScanner, setShowScanner] = useState(false);
+            const [notification, setNotification] = useState(null);
             const scannerRef = useRef(null);
 
+            // Giả lập dữ liệu nếu API chưa sẵn sàng
             useEffect(() => {
-                const savedAuth = sessionStorage.getItem('isLoggedIn');
-                if (savedAuth === 'true') setIsLoggedIn(true);
                 fetchData();
             }, []);
 
             const fetchData = async () => {
                 setIsSyncing(true);
                 try {
-                    const response = await fetch(API_URL);
-                    const data = await response.json();
+                    const res = await fetch(API_URL);
+                    const data = await res.json();
                     setProducts(data.products || []);
-                    setTransactions(data.transactions || []);
-                } catch (error) {
-                    console.error("Lỗi:", error);
+                } catch (e) {
+                    // Dữ liệu mẫu nếu lỗi
+                    setProducts([
+                        { id: "8934567890123", name: "Gà rán KFC miếng lớn", price: 35000, stock: 50 },
+                        { id: "12345", name: "Coca Cola 330ml", price: 10000, stock: 120 },
+                        { id: "67890", name: "Bánh mì Pate", price: 15000, stock: 30 }
+                    ]);
                 } finally {
                     setIsSyncing(false);
                 }
             };
 
-            const handleLogin = (e) => {
-                e.preventDefault();
-                if (loginForm.username === AUTH_CREDENTIALS.username && loginForm.password === AUTH_CREDENTIALS.password) {
-                    setIsLoggedIn(true);
-                    sessionStorage.setItem('isLoggedIn', 'true');
-                } else {
-                    alert('Sai thông tin!');
-                }
-            };
-
             const addToCart = (product) => {
-                if (!product || product.stock <= 0) return;
                 setCart(prev => {
                     const existing = prev.find(item => item.id === product.id);
                     if (existing) return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
                     return [...prev, { ...product, quantity: 1 }];
                 });
+                // Haptic feedback giả lập
+                if (window.navigator.vibrate) window.navigator.vibrate(50);
             };
 
-            // Quét Camera
+            // Logic quét mã
             useEffect(() => {
                 if (showScanner) {
+                    const config = { fps: 15, qrbox: { width: 250, height: 150 } };
                     const html5QrCode = new Html5Qrcode("reader");
                     scannerRef.current = html5QrCode;
-                    html5QrCode.start(
-                        { facingMode: "environment" }, 
-                        { fps: 15, qrbox: { width: 250, height: 150 } },
-                        (decodedText) => {
-                            const p = products.find(prod => prod.id.toString() === decodedText);
-                            if (p) {
-                                addToCart(p);
-                                stopScanner();
-                            } else {
-                                alert(`Không tìm thấy sản phẩm mã: ${decodedText}`);
-                                stopScanner();
-                            }
-                        },
-                        () => {}
-                    ).catch(err => alert("Vui lòng cấp quyền Camera trong cài đặt trình duyệt."));
+
+                    html5QrCode.start({ facingMode: "environment" }, config, (text) => {
+                        const found = products.find(p => p.id.toString() === text);
+                        if (found) {
+                            addToCart(found);
+                            setNotification({ type: 'success', title: 'Đã thêm!', message: `Đã quét: ${found.name}` });
+                            stopScanner();
+                        } else {
+                            setNotification({ type: 'error', title: 'Lỗi', message: `Không tìm thấy mã: ${text}` });
+                            stopScanner();
+                        }
+                    }).catch(err => console.error(err));
                 }
                 return () => stopScanner();
-            }, [showScanner]);
+            }, [showScanner, products]);
 
             const stopScanner = () => {
-                if (scannerRef.current && scannerRef.current.isScanning) {
-                    scannerRef.current.stop().then(() => setShowScanner(false));
+                if (scannerRef.current) {
+                    scannerRef.current.stop().then(() => setShowScanner(false)).catch(() => setShowScanner(false));
                 } else {
                     setShowScanner(false);
                 }
             };
 
-            const totalAmount = useMemo(() => cart.reduce((s, i) => s + (i.price * i.quantity), 0), [cart]);
-
             const filteredProducts = useMemo(() => {
-                const term = searchTerm.toLowerCase();
-                return products.filter(p => p.name.toLowerCase().includes(term) || p.id.toString().includes(term));
-            }, [products, searchTerm]);
-
-            if (!isLoggedIn) {
-                return (
-                    <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center p-6">
-                        <div className="w-full max-w-sm bg-white p-8 rounded-[40px] shadow-2xl">
-                            <div className="text-center mb-10">
-                                <div className="inline-flex p-4 bg-blue-600 rounded-3xl mb-4 shadow-lg shadow-blue-200">
-                                    <Icon name="Store" className="text-white w-8 h-8"/>
-                                </div>
-                                <h1 className="text-2xl font-black tracking-tight text-slate-800">VinaPOS Mobile</h1>
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Cloud Sync System</p>
-                            </div>
-                            <form onSubmit={handleLogin} className="space-y-4">
-                                <input type="text" placeholder="Tài khoản" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border border-transparent focus:border-blue-500 transition-all" value={loginForm.username} onChange={e => setLoginForm({...loginForm, username: e.target.value})} />
-                                <input type="password" placeholder="Mật khẩu" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border border-transparent focus:border-blue-500 transition-all" value={loginForm.password} onChange={e => setLoginForm({...loginForm, password: e.target.value})} />
-                                <button className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black active:scale-95 transition-all shadow-xl">ĐĂNG NHẬP</button>
-                            </form>
-                        </div>
-                    </div>
+                return products.filter(p => 
+                    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                    p.id.toString().includes(searchTerm)
                 );
-            }
+            }, [searchTerm, products]);
+
+            const total = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
             return (
-                <div className="flex flex-col h-screen bg-slate-50 overflow-hidden">
-                    <header className="safe-top bg-white border-b px-4 py-3 flex items-center justify-between sticky top-0 z-40">
-                        <span className="font-black text-lg text-blue-600 italic">VinaPOS</span>
-                        <div className="flex gap-2">
-                            <button onClick={() => setShowScanner(true)} className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><Icon name="ScanLine"/></button>
-                            <button onClick={fetchData} className="p-2.5 bg-slate-100 rounded-xl"><Icon name="RefreshCw" className={isSyncing ? "animate-spin" : ""}/></button>
-                            <button onClick={() => {sessionStorage.clear(); window.location.reload();}} className="p-2.5 bg-red-50 text-red-500 rounded-xl"><Icon name="LogOut"/></button>
+                <div className="flex flex-col h-screen max-w-md mx-auto bg-white shadow-2xl relative">
+                    {/* Header */}
+                    <header className="safe-top bg-white border-b px-6 py-4 flex justify-between items-center z-10">
+                        <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                                <Icon name="Zap" className="text-white w-5 h-5 fill-current"/>
+                            </div>
+                            <h1 className="font-extrabold text-xl tracking-tight">VinaPOS</h1>
                         </div>
+                        <button onClick={fetchData} className={`p-2 rounded-full ${isSyncing ? 'animate-spin text-blue-500' : 'text-slate-400'}`}>
+                            <Icon name="RefreshCw" className="w-5 h-5" />
+                        </button>
                     </header>
 
-                    <main className="flex-1 overflow-y-auto pb-32">
-                        {activeTab === 'pos' && (
-                            <div className="p-4 space-y-4">
-                                <div className="relative">
-                                    <Icon name="Search" className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4"/>
-                                    <input type="text" placeholder="Tên hàng hoặc mã vạch..." className="w-full pl-11 pr-4 py-3.5 bg-white border rounded-2xl shadow-sm outline-none font-bold" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-                                </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    {filteredProducts.map(p => (
-                                        <div key={p.id} onClick={() => addToCart(p)} className="bg-white p-3 rounded-[24px] border shadow-sm active:scale-95 transition-all">
-                                            <div className="aspect-square bg-slate-50 rounded-[20px] mb-2 flex items-center justify-center text-slate-200"><Icon name="Package" className="w-10 h-10"/></div>
-                                            <h3 className="font-bold text-[11px] line-clamp-2 h-7 leading-tight">{p.name}</h3>
-                                            <p className="text-blue-600 font-black text-sm mt-1">{Number(p.price).toLocaleString()}đ</p>
-                                        </div>
-                                    ))}
-                                </div>
+                    {/* Tìm kiếm & Quét (Tích hợp) */}
+                    <div className="px-6 py-4 bg-white sticky top-0 z-10">
+                        <div className="relative group">
+                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                <Icon name="Search" />
                             </div>
-                        )}
+                            <input 
+                                type="text" 
+                                placeholder="Tên hàng hoặc mã vạch..." 
+                                className="w-full bg-slate-100 border-none rounded-2xl py-4 pl-12 pr-14 font-semibold text-sm focus:ring-2 focus:ring-blue-500 transition-all outline-none"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                            {/* NÚT QUÉT MÃ TRONG Ô TÌM KIẾM */}
+                            <button 
+                                onClick={() => setShowScanner(true)}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 bg-blue-600 text-white p-2.5 rounded-xl shadow-lg active:scale-90 transition-transform"
+                            >
+                                <Icon name="ScanBarcode" className="w-5 h-5" />
+                            </button>
+                        </div>
+                    </div>
 
-                        {activeTab === 'inventory' && (
-                            <div className="p-4 space-y-4">
-                                <div className="bg-white rounded-3xl border divide-y overflow-hidden shadow-sm">
-                                    {products.map(p => (
-                                        <div key={p.id} className="p-4 flex justify-between items-center">
-                                            <div>
-                                                <p className="font-bold text-xs">{p.name}</p>
-                                                <p className="text-[10px] font-black text-slate-400">ID: {p.id}</p>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="font-black text-xs text-blue-600">{Number(p.price).toLocaleString()}đ</p>
-                                                <p className={`text-[9px] font-black uppercase ${p.stock < 5 ? 'text-red-500' : 'text-slate-400'}`}>Tồn: {p.stock}</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {activeTab === 'accounting' && (
-                            <div className="p-4 space-y-4">
-                                <div className="bg-blue-600 text-white p-6 rounded-[32px] shadow-xl">
-                                    <p className="text-[10px] font-black uppercase opacity-60">Doanh thu tổng</p>
-                                    <p className="text-3xl font-black mt-1">{transactions.reduce((s,t)=>s+Number(t.total),0).toLocaleString()}đ</p>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="bg-white p-5 rounded-[28px] border shadow-sm">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase">Đơn hàng</p>
-                                        <p className="text-xl font-black">{transactions.length}</p>
+                    {/* Danh sách sản phẩm */}
+                    <main className="flex-1 overflow-y-auto px-6 pb-40">
+                        <div className="grid grid-cols-2 gap-4">
+                            {filteredProducts.map(p => (
+                                <div key={p.id} onClick={() => addToCart(p)} className="bg-white border border-slate-100 rounded-3xl p-4 shadow-sm active:bg-slate-50 transition-colors">
+                                    <div className="aspect-square bg-slate-50 rounded-2xl mb-3 flex items-center justify-center text-slate-300">
+                                        <Icon name="Package" className="w-10 h-10" />
                                     </div>
-                                    <div className="bg-white p-5 rounded-[28px] border shadow-sm">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase">Lợi nhuận</p>
-                                        <p className="text-xl font-black text-emerald-600 italic">UP</p>
-                                    </div>
+                                    <h3 className="font-bold text-xs text-slate-700 h-8 line-clamp-2 leading-tight">{p.name}</h3>
+                                    <p className="text-blue-600 font-extrabold mt-2 italic text-sm">{p.price.toLocaleString()}đ</p>
                                 </div>
-                            </div>
-                        )}
+                            ))}
+                        </div>
                     </main>
 
-                    {/* Footer Nav */}
-                    <nav className="bg-white border-t px-4 py-3 flex justify-between items-center sticky bottom-0 safe-bottom z-40">
-                        <NavBtn active={activeTab==='pos'} onClick={()=>setActiveTab('pos')} icon="ShoppingCart" label="Bán hàng" />
-                        <NavBtn active={activeTab==='inventory'} onClick={()=>setActiveTab('inventory')} icon="Package" label="Kho" />
-                        <NavBtn active={activeTab==='accounting'} onClick={()=>setActiveTab('accounting')} icon="BarChart3" label="Báo cáo" />
-                        <NavBtn active={activeTab==='history'} onClick={()=>setActiveTab('history')} icon="History" label="Lịch sử" />
-                    </nav>
-
-                    {/* QR Scanner Modal */}
-                    {showScanner && (
-                        <div className="fixed inset-0 bg-black z-[100] flex flex-col">
-                            <div className="p-6 flex justify-between items-center text-white safe-top">
-                                <p className="font-black text-xs uppercase tracking-widest">Đang quét mã...</p>
-                                <button onClick={stopScanner} className="bg-white/20 p-2 rounded-full"><Icon name="X"/></button>
+                    {/* Thanh toán & Giỏ hàng */}
+                    {cart.length > 0 && (
+                        <div className="fixed bottom-24 left-4 right-4 bg-slate-900 text-white p-5 rounded-[32px] shadow-2xl flex items-center justify-between animate-pop-in z-20">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-blue-600 p-3 rounded-2xl relative">
+                                    <Icon name="ShoppingBag" />
+                                    <span className="absolute -top-1 -right-1 bg-white text-blue-600 text-[10px] font-black px-1.5 rounded-full">{cart.reduce((a,b)=>a+b.quantity,0)}</span>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] uppercase font-bold opacity-40">Tổng cộng</p>
+                                    <p className="text-lg font-black">{total.toLocaleString()}đ</p>
+                                </div>
                             </div>
-                            <div className="flex-1 flex items-center justify-center p-6">
-                                <div id="reader" className="w-full max-w-sm aspect-[4/3] bg-slate-900 rounded-[32px] overflow-hidden border-2 border-blue-500"></div>
-                            </div>
-                            <div className="p-10 text-center text-white/40 text-[10px] font-black safe-bottom">HỆ THỐNG TỰ ĐỘNG NHẬN DIỆN MÃ VẠCH</div>
+                            <button className="bg-blue-600 px-6 py-3 rounded-xl font-black text-sm active:bg-blue-700">THANH TOÁN</button>
                         </div>
                     )}
 
-                    {/* Giỏ hàng nổi */}
-                    {cart.length > 0 && activeTab === 'pos' && (
-                        <div className="fixed bottom-24 left-4 right-4 bg-blue-600 text-white p-4 rounded-[24px] shadow-2xl flex justify-between items-center animate-slide-up z-30">
-                            <div>
-                                <p className="text-[10px] font-black opacity-70 uppercase tracking-tighter">Tổng {cart.length} món</p>
-                                <p className="text-xl font-black">{totalAmount.toLocaleString()}đ</p>
+                    {/* Bottom Navigation */}
+                    <nav className="bg-white/80 backdrop-blur-md border-t px-8 py-4 flex justify-between safe-bottom">
+                        <NavTab icon="Store" label="Bán hàng" active />
+                        <NavTab icon="Package2" label="Kho" />
+                        <NavTab icon="BarChart3" label="Báo cáo" />
+                        <NavTab icon="History" label="Lịch sử" />
+                    </nav>
+
+                    {/* UI Quét mã toàn màn hình */}
+                    {showScanner && (
+                        <div className="fixed inset-0 z-[100] bg-black flex flex-col">
+                            <div className="p-8 flex justify-between items-center text-white safe-top">
+                                <div>
+                                    <h2 className="text-xl font-black">Máy quét VinaPOS</h2>
+                                    <p className="text-xs opacity-60">Đưa mã vạch vào khung hình</p>
+                                </div>
+                                <button onClick={stopScanner} className="bg-white/10 w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md">
+                                    <Icon name="X" />
+                                </button>
                             </div>
-                            <button onClick={() => alert('Đã gửi dữ liệu lên Cloud!')} className="bg-white text-blue-600 px-6 py-2.5 rounded-xl font-black text-sm active:scale-95 transition-all shadow-lg uppercase">Thanh toán</button>
+                            <div className="flex-1 flex items-center justify-center p-6">
+                                <div id="reader" className="w-full aspect-[4/3] relative">
+                                    {/* Overlay trang trí khung quét */}
+                                    <div className="absolute inset-0 border-2 border-blue-500/30 rounded-3xl z-10 pointer-events-none">
+                                        <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-blue-500 rounded-tl-3xl"></div>
+                                        <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-blue-500 rounded-tr-3xl"></div>
+                                        <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-blue-500 rounded-bl-3xl"></div>
+                                        <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-blue-500 rounded-br-3xl"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="p-10 text-center text-white/20 font-bold uppercase tracking-widest text-[10px] safe-bottom">
+                                VINAPOS SCAN ENGINE v3.0
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Notification Toast */}
+                    {notification && (
+                        <div className="fixed top-24 left-6 right-6 z-[150] animate-pop-in">
+                            <div className={`p-4 rounded-2xl shadow-xl flex items-center gap-3 ${notification.type === 'success' ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}>
+                                <Icon name={notification.type === 'success' ? 'CheckCircle' : 'AlertTriangle'} />
+                                <div className="flex-1">
+                                    <p className="text-xs font-black">{notification.title}</p>
+                                    <p className="text-[10px] opacity-80">{notification.message}</p>
+                                </div>
+                                <button onClick={() => setNotification(null)}><Icon name="X" className="w-4 h-4" /></button>
+                            </div>
                         </div>
                     )}
                 </div>
             );
         }
 
-        function NavBtn({ active, onClick, icon, label }) {
+        function NavTab({ icon, label, active }) {
             return (
-                <button onClick={onClick} className={`flex flex-col items-center flex-1 py-1 transition-all ${active ? 'text-blue-600 scale-110' : 'text-slate-300'}`}>
-                    <Icon name={icon} className="w-5 h-5" />
-                    <span className="text-[9px] font-black uppercase mt-1 tracking-tighter">{label}</span>
-                </button>
+                <div className={`flex flex-col items-center gap-1 ${active ? 'text-blue-600' : 'text-slate-300'}`}>
+                    <Icon name={icon} className="w-6 h-6" />
+                    <span className="text-[9px] font-bold uppercase tracking-tighter">{label}</span>
+                </div>
             );
         }
 
