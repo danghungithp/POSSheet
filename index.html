@@ -2,273 +2,581 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>VinaPOS Mobile - Smart Scanning</title>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>H-STORE 2026 | Smart Inventory & POS</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://unpkg.com/html5-qrcode"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.344.0/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/@zxing/library@latest"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+        
+        :root {
+            --primary: #2563eb;
+            --background: #f8fafc;
+        }
+
         body { 
             font-family: 'Plus Jakarta Sans', sans-serif; 
-            -webkit-tap-highlight-color: transparent; 
-            touch-action: manipulation;
-        }
-        .safe-top { padding-top: env(safe-area-inset-top); }
-        .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
-        
-        .animate-pop-in { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        @keyframes popIn {
-            from { transform: scale(0.9); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
+            background-color: var(--background);
+            -webkit-tap-highlight-color: transparent;
         }
 
-        #reader video {
-            object-fit: cover !important;
-            border-radius: 24px;
+        .sidebar-item.active {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+        }
+
+        @media (max-width: 768px) {
+            .main-content { padding-bottom: 80px; }
+            .mobile-bottom-nav {
+                position: fixed;
+                bottom: 0; left: 0; right: 0;
+                background: white;
+                display: flex;
+                justify-content: space-around;
+                padding: 12px;
+                border-top: 1px solid #e2e8f0;
+                z-index: 50;
+            }
+            .cart-panel {
+                position: fixed;
+                bottom: 70px; left: 0; right: 0;
+                background: white;
+                z-index: 40;
+                transform: translateY(100%);
+                transition: transform 0.3s ease;
+                border-radius: 24px 24px 0 0;
+                box-shadow: 0 -10px 25px rgba(0,0,0,0.1);
+            }
+            .cart-panel.open { transform: translateY(0); }
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        @keyframes scan-line { 0% { top: 0; } 100% { top: 100%; } }
+        .scan-anim {
+            position: absolute; width: 100%; height: 2px;
+            background: #3b82f6; box-shadow: 0 0 15px #3b82f6;
+            animation: scan-line 2s linear infinite;
         }
     </style>
 </head>
-<body class="bg-[#F1F5F9] text-slate-900 overflow-hidden">
-    <div id="root"></div>
+<body class="antialiased text-slate-900">
 
-    <script type="text/babel">
-        const { useState, useEffect, useMemo, useRef } = React;
+<div id="app">
+    <!-- Màn hình Đăng nhập -->
+    <div id="login-screen" class="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+        <div class="max-w-md w-full bg-white p-8 rounded-[32px] shadow-2xl border border-slate-100">
+            <div class="text-center mb-10">
+                <div class="bg-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 rotate-3 shadow-blue-200 shadow-2xl">
+                    <i data-lucide="shopping-bag" class="w-8 h-8 text-white -rotate-3"></i>
+                </div>
+                <h2 class="text-3xl font-extrabold text-slate-800 tracking-tight">H-STORE 2026</h2>
+                <p class="text-slate-500 mt-2 font-medium">Chào mừng trở lại!</p>
+            </div>
+            <form id="login-form" class="space-y-4" onsubmit="handleLogin(event)">
+                <input type="text" id="username" class="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="Tên đăng nhập">
+                <input type="password" id="password" class="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="Mật khẩu">
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl transition-all shadow-lg active:scale-[0.98]">Đăng nhập</button>
+            </form>
+        </div>
+    </div>
 
-        const Icon = ({ name, className = "w-5 h-5", ...props }) => {
-            const iconRef = useRef(null);
-            useEffect(() => {
-                if (window.lucide && iconRef.current) {
-                    window.lucide.createIcons();
-                }
-            }, [name]);
-            return <i data-lucide={name} className={className} ref={iconRef} {...props}></i>;
-        };
+    <!-- Dashboard chính -->
+    <div id="main-dashboard" class="hidden min-h-screen flex flex-col md:flex-row overflow-hidden">
+        <!-- Sidebar Desktop -->
+        <aside class="hidden md:flex w-72 bg-white border-r border-slate-200 flex-col flex-shrink-0 z-30">
+            <div class="p-8 border-b border-slate-50 flex items-center gap-4">
+                <div class="bg-blue-600 p-2.5 rounded-xl text-white shadow-lg"><i data-lucide="rocket" class="w-6 h-6"></i></div>
+                <span class="font-bold text-slate-800 text-xl">H-STORE</span>
+            </div>
+            <nav class="flex-1 p-6 space-y-2">
+                <button onclick="switchTab('pos')" class="sidebar-item w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-slate-500 font-semibold transition-all hover:bg-slate-50" data-tab="pos">
+                    <i data-lucide="layout-grid" class="w-5 h-5"></i> Bán hàng POS
+                </button>
+                <button onclick="switchTab('inventory')" class="sidebar-item w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-slate-500 font-semibold transition-all hover:bg-slate-50" data-tab="inventory">
+                    <i data-lucide="box" class="w-5 h-5"></i> Kho hàng
+                </button>
+                <button onclick="switchTab('accounting')" class="sidebar-item w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-slate-500 font-semibold transition-all hover:bg-slate-50" data-tab="accounting">
+                    <i data-lucide="pie-chart" class="w-5 h-5"></i> Tài chính
+                </button>
+            </nav>
+            <div class="p-6 border-t border-slate-50">
+                <button onclick="logout()" class="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-red-500 font-semibold hover:bg-red-50 transition-all">
+                    <i data-lucide="log-out" class="w-5 h-5"></i> Thoát
+                </button>
+            </div>
+        </aside>
 
-        const API_URL = "https://script.google.com/macros/s/AKfycbxqcjr7UtUKXYkB2uBkkc6Sy4NMXFfFtofOgohUQpJsvukmOqOHHIf1RKXGZpqBVxyZ/exec";
+        <!-- Bottom Nav Mobile -->
+        <nav class="md:hidden mobile-bottom-nav shadow-2xl">
+            <button onclick="switchTab('pos')" class="flex flex-col items-center gap-1 text-slate-400" data-mobile-tab="pos">
+                <i data-lucide="shopping-cart" class="w-6 h-6"></i>
+                <span class="text-[10px] font-bold uppercase">POS</span>
+            </button>
+            <button onclick="switchTab('inventory')" class="flex flex-col items-center gap-1 text-slate-400" data-mobile-tab="inventory">
+                <i data-lucide="package" class="w-6 h-6"></i>
+                <span class="text-[10px] font-bold uppercase">Kho</span>
+            </button>
+            <button onclick="switchTab('accounting')" class="flex flex-col items-center gap-1 text-slate-400" data-mobile-tab="accounting">
+                <i data-lucide="bar-chart-3" class="w-6 h-6"></i>
+                <span class="text-[10px] font-bold uppercase">Thuế</span>
+            </button>
+        </nav>
 
-        function App() {
-            const [activeTab, setActiveTab] = useState('pos');
-            const [products, setProducts] = useState([]);
-            const [cart, setCart] = useState([]);
-            const [searchTerm, setSearchTerm] = useState('');
-            const [isSyncing, setIsSyncing] = useState(false);
-            const [showScanner, setShowScanner] = useState(false);
-            const [notification, setNotification] = useState(null);
-            const scannerRef = useRef(null);
+        <main class="flex-1 main-content overflow-y-auto relative bg-[#f8fafc]">
+            <header class="bg-white/80 backdrop-blur-md sticky top-0 z-20 px-6 py-4 flex justify-between items-center border-b border-slate-200">
+                <h2 id="current-tab-title" class="text-xl font-black text-slate-800">Bán hàng</h2>
+                <div class="flex items-center gap-3">
+                    <div id="sync-dot" class="w-2.5 h-2.5 rounded-full bg-green-500"></div>
+                    <span id="sync-text" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden sm:inline">Online</span>
+                    <button onclick="loadData()" class="p-2 hover:bg-slate-100 rounded-full transition-colors"><i data-lucide="rotate-cw" class="w-5 h-5 text-slate-400"></i></button>
+                </div>
+            </header>
 
-            // Giả lập dữ liệu nếu API chưa sẵn sàng
-            useEffect(() => {
-                fetchData();
-            }, []);
-
-            const fetchData = async () => {
-                setIsSyncing(true);
-                try {
-                    const res = await fetch(API_URL);
-                    const data = await res.json();
-                    setProducts(data.products || []);
-                } catch (e) {
-                    // Dữ liệu mẫu nếu lỗi
-                    setProducts([
-                        { id: "8934567890123", name: "Gà rán KFC miếng lớn", price: 35000, stock: 50 },
-                        { id: "12345", name: "Coca Cola 330ml", price: 10000, stock: 120 },
-                        { id: "67890", name: "Bánh mì Pate", price: 15000, stock: 30 }
-                    ]);
-                } finally {
-                    setIsSyncing(false);
-                }
-            };
-
-            const addToCart = (product) => {
-                setCart(prev => {
-                    const existing = prev.find(item => item.id === product.id);
-                    if (existing) return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
-                    return [...prev, { ...product, quantity: 1 }];
-                });
-                // Haptic feedback giả lập
-                if (window.navigator.vibrate) window.navigator.vibrate(50);
-            };
-
-            // Logic quét mã
-            useEffect(() => {
-                if (showScanner) {
-                    const config = { fps: 15, qrbox: { width: 250, height: 150 } };
-                    const html5QrCode = new Html5Qrcode("reader");
-                    scannerRef.current = html5QrCode;
-
-                    html5QrCode.start({ facingMode: "environment" }, config, (text) => {
-                        const found = products.find(p => p.id.toString() === text);
-                        if (found) {
-                            addToCart(found);
-                            setNotification({ type: 'success', title: 'Đã thêm!', message: `Đã quét: ${found.name}` });
-                            stopScanner();
-                        } else {
-                            setNotification({ type: 'error', title: 'Lỗi', message: `Không tìm thấy mã: ${text}` });
-                            stopScanner();
-                        }
-                    }).catch(err => console.error(err));
-                }
-                return () => stopScanner();
-            }, [showScanner, products]);
-
-            const stopScanner = () => {
-                if (scannerRef.current) {
-                    scannerRef.current.stop().then(() => setShowScanner(false)).catch(() => setShowScanner(false));
-                } else {
-                    setShowScanner(false);
-                }
-            };
-
-            const filteredProducts = useMemo(() => {
-                return products.filter(p => 
-                    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                    p.id.toString().includes(searchTerm)
-                );
-            }, [searchTerm, products]);
-
-            const total = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-
-            return (
-                <div className="flex flex-col h-screen max-w-md mx-auto bg-white shadow-2xl relative">
-                    {/* Header */}
-                    <header className="safe-top bg-white border-b px-6 py-4 flex justify-between items-center z-10">
-                        <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                                <Icon name="Zap" className="text-white w-5 h-5 fill-current"/>
-                            </div>
-                            <h1 className="font-extrabold text-xl tracking-tight">VinaPOS</h1>
+            <div class="p-4 md:p-8 max-w-7xl mx-auto">
+                <!-- TAB POS -->
+                <div id="tab-pos" class="tab-content flex flex-col lg:flex-row gap-8">
+                    <div class="flex-1 space-y-6">
+                        <div class="relative">
+                            <i data-lucide="search" class="absolute left-4 top-4 text-slate-400 w-5 h-5"></i>
+                            <input type="text" id="pos-search" oninput="searchProduct(this.value)" class="w-full pl-12 pr-14 py-4 rounded-2xl bg-white shadow-sm border border-slate-200 focus:ring-4 focus:ring-blue-100 outline-none transition-all text-lg" placeholder="Tìm tên hoặc quét mã...">
+                            <button onclick="openScanner('pos')" class="absolute right-3 top-3 p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-colors">
+                                <i data-lucide="scan-barcode" class="w-6 h-6"></i>
+                            </button>
                         </div>
-                        <button onClick={fetchData} className={`p-2 rounded-full ${isSyncing ? 'animate-spin text-blue-500' : 'text-slate-400'}`}>
-                            <Icon name="RefreshCw" className="w-5 h-5" />
-                        </button>
-                    </header>
+                        <div id="pos-grid" class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+                    </div>
 
-                    {/* Tìm kiếm & Quét (Tích hợp) */}
-                    <div className="px-6 py-4 bg-white sticky top-0 z-10">
-                        <div className="relative group">
-                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                                <Icon name="Search" />
+                    <!-- Giỏ hàng -->
+                    <div id="cart-panel" class="cart-panel lg:block lg:static lg:w-[380px] lg:bg-white lg:rounded-[32px] lg:border lg:border-slate-100 flex flex-col max-h-[85vh] lg:max-h-none shadow-xl lg:shadow-none">
+                        <div class="p-6 border-b border-slate-50 flex justify-between items-center">
+                            <h3 class="font-black text-slate-800 flex items-center gap-2">
+                                <i data-lucide="shopping-bag" class="text-blue-600"></i> GIỎ HÀNG
+                                <span id="cart-count" class="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">0</span>
+                            </h3>
+                            <button onclick="toggleMobileCart()" class="lg:hidden text-slate-400"><i data-lucide="chevron-down"></i></button>
+                        </div>
+                        <div id="cart-items" class="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar min-h-[200px]"></div>
+                        <div class="p-6 bg-slate-50/80 border-t border-slate-100 space-y-4">
+                            <div class="flex justify-between items-end">
+                                <span class="text-slate-400 font-bold text-xs uppercase">Tổng cộng</span>
+                                <span id="cart-total" class="text-2xl font-black text-blue-600">0đ</span>
                             </div>
-                            <input 
-                                type="text" 
-                                placeholder="Tên hàng hoặc mã vạch..." 
-                                className="w-full bg-slate-100 border-none rounded-2xl py-4 pl-12 pr-14 font-semibold text-sm focus:ring-2 focus:ring-blue-500 transition-all outline-none"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                            {/* NÚT QUÉT MÃ TRONG Ô TÌM KIẾM */}
-                            <button 
-                                onClick={() => setShowScanner(true)}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 bg-blue-600 text-white p-2.5 rounded-xl shadow-lg active:scale-90 transition-transform"
-                            >
-                                <Icon name="ScanBarcode" className="w-5 h-5" />
+                            <button onclick="checkout()" class="w-full bg-blue-600 text-white py-5 rounded-2xl font-black shadow-xl active:scale-95 transition-transform flex items-center justify-center gap-2">
+                                <i data-lucide="zap" class="w-5 h-5 fill-white"></i> THANH TOÁN
                             </button>
                         </div>
                     </div>
-
-                    {/* Danh sách sản phẩm */}
-                    <main className="flex-1 overflow-y-auto px-6 pb-40">
-                        <div className="grid grid-cols-2 gap-4">
-                            {filteredProducts.map(p => (
-                                <div key={p.id} onClick={() => addToCart(p)} className="bg-white border border-slate-100 rounded-3xl p-4 shadow-sm active:bg-slate-50 transition-colors">
-                                    <div className="aspect-square bg-slate-50 rounded-2xl mb-3 flex items-center justify-center text-slate-300">
-                                        <Icon name="Package" className="w-10 h-10" />
-                                    </div>
-                                    <h3 className="font-bold text-xs text-slate-700 h-8 line-clamp-2 leading-tight">{p.name}</h3>
-                                    <p className="text-blue-600 font-extrabold mt-2 italic text-sm">{p.price.toLocaleString()}đ</p>
-                                </div>
-                            ))}
-                        </div>
-                    </main>
-
-                    {/* Thanh toán & Giỏ hàng */}
-                    {cart.length > 0 && (
-                        <div className="fixed bottom-24 left-4 right-4 bg-slate-900 text-white p-5 rounded-[32px] shadow-2xl flex items-center justify-between animate-pop-in z-20">
-                            <div className="flex items-center gap-3">
-                                <div className="bg-blue-600 p-3 rounded-2xl relative">
-                                    <Icon name="ShoppingBag" />
-                                    <span className="absolute -top-1 -right-1 bg-white text-blue-600 text-[10px] font-black px-1.5 rounded-full">{cart.reduce((a,b)=>a+b.quantity,0)}</span>
-                                </div>
-                                <div>
-                                    <p className="text-[10px] uppercase font-bold opacity-40">Tổng cộng</p>
-                                    <p className="text-lg font-black">{total.toLocaleString()}đ</p>
-                                </div>
-                            </div>
-                            <button className="bg-blue-600 px-6 py-3 rounded-xl font-black text-sm active:bg-blue-700">THANH TOÁN</button>
-                        </div>
-                    )}
-
-                    {/* Bottom Navigation */}
-                    <nav className="bg-white/80 backdrop-blur-md border-t px-8 py-4 flex justify-between safe-bottom">
-                        <NavTab icon="Store" label="Bán hàng" active />
-                        <NavTab icon="Package2" label="Kho" />
-                        <NavTab icon="BarChart3" label="Báo cáo" />
-                        <NavTab icon="History" label="Lịch sử" />
-                    </nav>
-
-                    {/* UI Quét mã toàn màn hình */}
-                    {showScanner && (
-                        <div className="fixed inset-0 z-[100] bg-black flex flex-col">
-                            <div className="p-8 flex justify-between items-center text-white safe-top">
-                                <div>
-                                    <h2 className="text-xl font-black">Máy quét VinaPOS</h2>
-                                    <p className="text-xs opacity-60">Đưa mã vạch vào khung hình</p>
-                                </div>
-                                <button onClick={stopScanner} className="bg-white/10 w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md">
-                                    <Icon name="X" />
-                                </button>
-                            </div>
-                            <div className="flex-1 flex items-center justify-center p-6">
-                                <div id="reader" className="w-full aspect-[4/3] relative">
-                                    {/* Overlay trang trí khung quét */}
-                                    <div className="absolute inset-0 border-2 border-blue-500/30 rounded-3xl z-10 pointer-events-none">
-                                        <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-blue-500 rounded-tl-3xl"></div>
-                                        <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-blue-500 rounded-tr-3xl"></div>
-                                        <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-blue-500 rounded-bl-3xl"></div>
-                                        <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-blue-500 rounded-br-3xl"></div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="p-10 text-center text-white/20 font-bold uppercase tracking-widest text-[10px] safe-bottom">
-                                VINAPOS SCAN ENGINE v3.0
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Notification Toast */}
-                    {notification && (
-                        <div className="fixed top-24 left-6 right-6 z-[150] animate-pop-in">
-                            <div className={`p-4 rounded-2xl shadow-xl flex items-center gap-3 ${notification.type === 'success' ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}>
-                                <Icon name={notification.type === 'success' ? 'CheckCircle' : 'AlertTriangle'} />
-                                <div className="flex-1">
-                                    <p className="text-xs font-black">{notification.title}</p>
-                                    <p className="text-[10px] opacity-80">{notification.message}</p>
-                                </div>
-                                <button onClick={() => setNotification(null)}><Icon name="X" className="w-4 h-4" /></button>
-                            </div>
-                        </div>
-                    )}
                 </div>
-            );
-        }
 
-        function NavTab({ icon, label, active }) {
-            return (
-                <div className={`flex flex-col items-center gap-1 ${active ? 'text-blue-600' : 'text-slate-300'}`}>
-                    <Icon name={icon} className="w-6 h-6" />
-                    <span className="text-[9px] font-bold uppercase tracking-tighter">{label}</span>
+                <!-- TAB INVENTORY -->
+                <div id="tab-inventory" class="tab-content hidden space-y-8">
+                    <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <div>
+                            <h2 class="text-2xl font-black text-slate-800">Quản lý kho</h2>
+                            <p class="text-slate-500 font-medium text-sm">Kiểm tra và nhập hàng hóa</p>
+                        </div>
+                        <button onclick="showModal('modal-add-product')" class="w-full sm:w-auto bg-slate-900 text-white px-6 py-4 rounded-2xl flex items-center justify-center gap-2 font-bold shadow-xl active:scale-95 transition-transform">
+                            <i data-lucide="plus-circle" class="w-5 h-5"></i> Nhập hàng mới
+                        </button>
+                    </div>
+
+                    <div class="bg-white rounded-[32px] border border-slate-100 overflow-hidden shadow-sm">
+                        <div class="overflow-x-auto custom-scrollbar">
+                            <table class="w-full text-left">
+                                <thead class="bg-slate-50/50 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                    <tr>
+                                        <th class="p-6">Sản phẩm</th>
+                                        <th class="p-6">Tồn kho</th>
+                                        <th class="p-6">Giá bán</th>
+                                        <th class="p-6">Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="inventory-table-body" class="divide-y divide-slate-50"></tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
-            );
-        }
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
+                <!-- TAB ACCOUNTING -->
+                <div id="tab-accounting" class="tab-content hidden space-y-6">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                            <p class="text-slate-400 text-[10px] font-black uppercase mb-1">Doanh thu</p>
+                            <h4 id="acc-revenue" class="text-xl font-black text-slate-800">0đ</h4>
+                        </div>
+                        <div class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                            <p class="text-slate-400 text-[10px] font-black uppercase mb-1">Giá vốn</p>
+                            <h4 id="acc-cogs" class="text-xl font-black text-slate-800">0đ</h4>
+                        </div>
+                        <div class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                            <p class="text-slate-400 text-[10px] font-black uppercase mb-1">Lợi nhuận</p>
+                            <h4 id="acc-profit" class="text-xl font-black text-green-600">0đ</h4>
+                        </div>
+                        <div class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                            <p class="text-slate-400 text-[10px] font-black uppercase mb-1">Thuế dự tính</p>
+                            <h4 id="acc-tax" class="text-xl font-black text-red-500">0đ</h4>
+                        </div>
+                    </div>
+                    <div class="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm">
+                        <h3 class="font-black mb-6 text-slate-800 uppercase text-xs tracking-widest">Biểu đồ doanh thu gần đây</h3>
+                        <div class="h-64"><canvas id="revenueChart"></canvas></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Nhập hàng (Giữ nguyên logic bạn vừa chạy được) -->
+    <div id="modal-add-product" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-[32px] p-8 shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-black text-slate-800">Nhập hàng vào kho</h3>
+                <button onclick="hideModal('modal-add-product')" class="text-slate-400"><i data-lucide="x"></i></button>
+            </div>
+            <div class="space-y-4">
+                <div class="relative">
+                    <label class="text-[10px] font-black text-slate-400 uppercase">Mã vạch</label>
+                    <input type="text" id="inp-id" class="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold pr-14" placeholder="Quét mã...">
+                    <button onclick="openScanner('inventory')" class="absolute right-3 top-7 p-2 bg-blue-600 text-white rounded-xl shadow-lg">
+                        <i data-lucide="scan" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <div><label class="text-[10px] font-black text-slate-400 uppercase">Tên sản phẩm</label><input type="text" id="inp-name" class="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold"></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="text-[10px] font-black text-slate-400 uppercase">Giá bán</label><input type="number" id="inp-price" class="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold"></div>
+                    <div><label class="text-[10px] font-black text-slate-400 uppercase">Giá vốn</label><input type="number" id="inp-cost" class="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold"></div>
+                </div>
+                <div><label class="text-[10px] font-black text-slate-400 uppercase">Số lượng nhập thêm</label><input type="number" id="inp-stock" value="1" class="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold"></div>
+                <button id="btn-save" onclick="saveToSheet()" class="w-full bg-blue-600 text-white py-5 rounded-2xl font-black shadow-lg transition-all active:scale-95">LƯU VÀO GOOGLE SHEET</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scanner Overlay -->
+    <div id="scanner-container" class="fixed inset-0 bg-black/90 z-[100] hidden flex flex-col items-center justify-center p-6">
+        <div class="relative w-full max-w-sm aspect-square bg-slate-900 rounded-[40px] overflow-hidden border-4 border-blue-600/30">
+            <video id="video" class="w-full h-full object-cover"></video>
+            <div class="scan-anim"></div>
+        </div>
+        <button onclick="stopScanner()" class="mt-8 bg-white/10 text-white px-12 py-4 rounded-2xl font-black">HỦY BỎ</button>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-8 py-4 rounded-2xl shadow-2xl transition-all transform -translate-y-24 opacity-0 z-[110] flex items-center gap-3 font-bold"></div>
+</div>
+
+<script>
+// --- CẤU HÌNH API ---
+const API_URL = 'https://script.google.com/macros/s/AKfycbyFt1Js_-hQaD2AH_O99okeckkD9nnXjkz4EjLfK1dix5uXtWYUetXuz5tMvcMNz8z5/exec';
+
+let products = [];
+let transactions = [];
+let cart = [];
+let codeReader = new ZXing.BrowserMultiFormatReader();
+let activeScanner = 'pos';
+let chart = null;
+
+// --- KHỞI TẠO ---
+window.onload = () => {
+    lucide.createIcons();
+    if(localStorage.getItem('hstore_auth')) showDashboard();
+};
+
+function handleLogin(e) {
+    e.preventDefault();
+    const u = document.getElementById('username').value;
+    const p = document.getElementById('password').value;
+    if(u === 'banhang' && p === 'Banhang@85') {
+        localStorage.setItem('hstore_auth', 'true');
+        showDashboard();
+    } else showToast("Sai thông tin!", true);
+}
+
+function showDashboard() {
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('main-dashboard').classList.remove('hidden');
+    loadData();
+    switchTab('pos');
+}
+
+// --- DỮ LIỆU ---
+async function loadData() {
+    updateSyncStatus('syncing');
+    try {
+        const res = await fetch(API_URL);
+        const data = await res.json();
+        products = data.products || [];
+        transactions = data.transactions || [];
+        renderAll();
+        updateSyncStatus('online');
+    } catch (e) {
+        updateSyncStatus('offline');
+        showToast("Lỗi tải dữ liệu!", true);
+    }
+}
+
+async function syncData(payload) {
+    updateSyncStatus('syncing');
+    try {
+        await fetch(API_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: {'Content-Type': 'text/plain'},
+            body: JSON.stringify(payload)
+        });
+        showToast("Đã gửi yêu cầu lưu!");
+        setTimeout(loadData, 1500); // Tự động load lại sau khi đẩy
+        return true;
+    } catch (e) {
+        showToast("Lỗi đồng bộ!", true);
+        updateSyncStatus('offline');
+        return false;
+    }
+}
+
+// --- TAB POS ---
+function renderPOS(filter = null) {
+    const list = filter || products;
+    const container = document.getElementById('pos-grid');
+    if(!list.length) {
+        container.innerHTML = `<div class="col-span-full py-10 text-center text-slate-400 font-bold">Không có sản phẩm</div>`;
+        return;
+    }
+    container.innerHTML = list.map(p => `
+        <div onclick="addToCart('${p.id}')" class="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:border-blue-400 cursor-pointer transition-all active:scale-95 group">
+            <div class="aspect-square bg-slate-50 rounded-2xl flex items-center justify-center mb-3 group-hover:bg-blue-50">
+                <i data-lucide="package" class="w-8 h-8 text-slate-200"></i>
+            </div>
+            <h5 class="font-bold text-slate-800 text-xs line-clamp-2 h-8">${p.name}</h5>
+            <div class="mt-2 flex justify-between items-center">
+                <span class="text-blue-600 font-black text-sm">${formatVND(p.price)}</span>
+                <span class="text-[10px] font-black ${p.stock <= 0 ? 'text-red-400' : 'text-slate-300'}">Tồn: ${p.stock}</span>
+            </div>
+        </div>
+    `).join('');
+    lucide.createIcons();
+}
+
+function searchProduct(val) {
+    const term = val.toLowerCase();
+    const filtered = products.filter(p => p.id.toString().includes(term) || p.name.toLowerCase().includes(term));
+    renderPOS(filtered);
+}
+
+function addToCart(id) {
+    const p = products.find(x => x.id.toString() === id.toString());
+    if(!p || p.stock <= 0) return showToast("Hết hàng!", true);
+    const exist = cart.find(i => i.id === id);
+    if(exist) {
+        if(exist.qty < p.stock) exist.qty++;
+        else showToast("Hết kho!", true);
+    } else cart.push({...p, qty: 1});
+    renderCart();
+}
+
+function renderCart() {
+    const container = document.getElementById('cart-items');
+    document.getElementById('cart-count').innerText = cart.length;
+    if(!cart.length) {
+        container.innerHTML = `<div class="h-40 flex flex-col items-center justify-center text-slate-300"><i data-lucide="shopping-basket" class="mb-2"></i><p class="text-xs font-bold">Giỏ trống</p></div>`;
+    } else {
+        container.innerHTML = cart.map(item => `
+            <div class="flex items-center gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center font-black text-blue-600 text-xs">${item.qty}x</div>
+                <div class="flex-1 min-w-0">
+                    <h6 class="font-bold text-slate-800 text-xs truncate">${item.name}</h6>
+                    <p class="text-[10px] font-black text-blue-500">${formatVND(item.price)}</p>
+                </div>
+                <button onclick="removeFromCart('${item.id}')" class="text-slate-300 hover:text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+            </div>
+        `).join('');
+    }
+    const total = cart.reduce((s, i) => s + (i.price * i.qty), 0);
+    document.getElementById('cart-total').innerText = formatVND(total);
+    lucide.createIcons();
+}
+
+function removeFromCart(id) { cart = cart.filter(i => i.id !== id); renderCart(); }
+
+async function checkout() {
+    if(!cart.length) return;
+    const total = cart.reduce((s, i) => s + (i.price * i.qty), 0);
+    const totalCost = cart.reduce((s, i) => s + (i.cost * i.qty), 0);
+    const tx = {
+        id: 'TX' + Date.now(),
+        timestamp: new Date().toLocaleString('vi-VN'),
+        items: cart.map(i => `${i.name} (${i.qty})`).join(', '),
+        total,
+        totalCost
+    };
+    const stockUpdates = cart.map(i => {
+        const p = products.find(x => x.id === i.id);
+        return { id: i.id, newStock: p.stock - i.qty };
+    });
+
+    const ok = await syncData({ action: 'addTransaction', transaction: tx, stockUpdates });
+    if(ok) { cart = []; renderCart(); }
+}
+
+// --- TAB KHO HÀNG ---
+function renderInventory() {
+    const tbody = document.getElementById('inventory-table-body');
+    tbody.innerHTML = products.map(p => `
+        <tr class="hover:bg-slate-50 transition-colors">
+            <td class="p-6">
+                <p class="font-black text-slate-800 text-sm">${p.name}</p>
+                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Mã: ${p.id}</p>
+            </td>
+            <td class="p-6">
+                <span class="px-3 py-1 rounded-lg text-xs font-black ${p.stock < 10 ? 'bg-red-50 text-red-500' : 'bg-slate-50 text-slate-600'}">${p.stock} đv</span>
+            </td>
+            <td class="p-6 text-sm font-black text-slate-700">${formatVND(p.price)}</td>
+            <td class="p-6">
+                <button onclick="editStock('${p.id}')" class="text-blue-600 hover:text-blue-800"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+            </td>
+        </tr>
+    `).join('');
+    lucide.createIcons();
+}
+
+function editStock(id) {
+    const p = products.find(x => x.id.toString() === id.toString());
+    if(p) {
+        showModal('modal-add-product');
+        document.getElementById('inp-id').value = p.id;
+        document.getElementById('inp-name').value = p.name;
+        document.getElementById('inp-price').value = p.price;
+        document.getElementById('inp-cost').value = p.cost;
+        document.getElementById('inp-stock').focus();
+    }
+}
+
+async function saveToSheet() {
+    const btn = document.getElementById('btn-save');
+    const id = document.getElementById('inp-id').value.trim();
+    const name = document.getElementById('inp-name').value.trim();
+    const price = Number(document.getElementById('inp-price').value);
+    const cost = Number(document.getElementById('inp-cost').value);
+    const addStock = Number(document.getElementById('inp-stock').value);
+
+    if(!id || !name) return showToast("Thiếu thông tin!", true);
+
+    btn.disabled = true;
+    btn.innerText = "ĐANG LƯU...";
+    
+    const pExist = products.find(p => p.id.toString() === id.toString());
+    let payload;
+
+    if(pExist) {
+        payload = { action: 'updateStock', id: id, newStock: Number(pExist.stock) + addStock };
+    } else {
+        payload = { action: 'addProduct', product: { id, name, price, cost, stock: addStock } };
+    }
+
+    const ok = await syncData(payload);
+    if(ok) {
+        hideModal('modal-add-product');
+        // Reset form
+        document.getElementById('inp-id').value = '';
+        document.getElementById('inp-name').value = '';
+    }
+    btn.disabled = false;
+    btn.innerText = "LƯU VÀO GOOGLE SHEET";
+}
+
+// --- TAB TÀI CHÍNH ---
+function renderAccounting() {
+    const rev = transactions.reduce((s, t) => s + t.total, 0);
+    const cogs = transactions.reduce((s, t) => s + (t.totalcost || 0), 0);
+    document.getElementById('acc-revenue').innerText = formatVND(rev);
+    document.getElementById('acc-cogs').innerText = formatVND(cogs);
+    document.getElementById('acc-profit').innerText = formatVND(rev - cogs);
+    document.getElementById('acc-tax').innerText = formatVND(rev * 0.1);
+
+    const ctx = document.getElementById('revenueChart').getContext('2d');
+    if(chart) chart.destroy();
+    chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: transactions.slice(-7).map(t => t.timestamp.split(' ')[1]),
+            datasets: [{ label: 'Doanh thu', data: transactions.slice(-7).map(t => t.total), borderColor: '#3b82f6', tension: 0.4, fill: true, backgroundColor: 'rgba(59,130,246,0.1)' }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { display: false }, x: { grid: { display: false } } } }
+    });
+}
+
+// --- UI HELPERS ---
+function renderAll() {
+    renderPOS();
+    renderInventory();
+    renderAccounting();
+}
+
+function switchTab(t) {
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+    document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+    document.querySelectorAll('[data-mobile-tab]').forEach(i => i.classList.remove('text-blue-600'));
+    
+    document.getElementById(`tab-${t}`).classList.remove('hidden');
+    const pc = document.querySelector(`[data-tab="${t}"]`); if(pc) pc.classList.add('active');
+    const mb = document.querySelector(`[data-mobile-tab="${t}"]`); if(mb) mb.classList.add('text-blue-600');
+    
+    const ts = { pos: 'Bán hàng POS', inventory: 'Kho hàng & Nhập kho', accounting: 'Báo cáo Tài chính' };
+    document.getElementById('current-tab-title').innerText = ts[t];
+    if(t === 'accounting') renderAccounting();
+    lucide.createIcons();
+}
+
+function openScanner(ctx) {
+    activeScanner = ctx;
+    document.getElementById('scanner-container').classList.remove('hidden');
+    codeReader.decodeFromVideoDevice(null, 'video', (result) => {
+        if(result) {
+            const code = result.text;
+            if(activeScanner === 'pos') {
+                document.getElementById('pos-search').value = code;
+                searchProduct(code);
+            } else {
+                document.getElementById('inp-id').value = code;
+                const p = products.find(x => x.id.toString() === code.toString());
+                if(p) {
+                    document.getElementById('inp-name').value = p.name;
+                    document.getElementById('inp-price').value = p.price;
+                    document.getElementById('inp-cost').value = p.cost;
+                    showToast("Tìm thấy: " + p.name);
+                }
+            }
+            stopScanner();
+        }
+    });
+}
+
+function stopScanner() { codeReader.reset(); document.getElementById('scanner-container').classList.add('hidden'); }
+function showModal(id) { document.getElementById(id).classList.remove('hidden'); }
+function hideModal(id) { document.getElementById(id).classList.add('hidden'); }
+function formatVND(n) { return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n); }
+function logout() { localStorage.removeItem('hstore_auth'); location.reload(); }
+function toggleMobileCart() { document.getElementById('cart-panel').classList.toggle('open'); }
+
+function showToast(msg, err = false) {
+    const t = document.getElementById('toast');
+    t.innerText = msg;
+    t.className = `fixed top-8 left-1/2 -translate-x-1/2 px-8 py-4 rounded-2xl shadow-2xl transition-all transform translate-y-0 opacity-100 z-[110] font-bold ${err ? 'bg-red-600' : 'bg-slate-900'} text-white`;
+    setTimeout(() => t.classList.add('opacity-0', '-translate-y-24'), 3000);
+}
+
+function updateSyncStatus(s) {
+    const dot = document.getElementById('sync-dot');
+    const txt = document.getElementById('sync-text');
+    if(s === 'syncing') { dot.className = 'w-2.5 h-2.5 rounded-full bg-yellow-500 animate-pulse'; txt.innerText = 'Đang lưu...'; }
+    else if(s === 'online') { dot.className = 'w-2.5 h-2.5 rounded-full bg-green-500'; txt.innerText = 'Online'; }
+    else { dot.className = 'w-2.5 h-2.5 rounded-full bg-red-500'; txt.innerText = 'Mất kết nối'; }
+}
+</script>
 </body>
 </html>
