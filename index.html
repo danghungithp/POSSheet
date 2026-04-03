@@ -479,7 +479,7 @@ async function saveToSheet() {
     if(!id || !name) return showToast("Thiếu thông tin!", true);
     const isEdit = document.getElementById('inp-id').readOnly;
     const payload = isEdit 
-        ? { action: 'updateStock', id, newStock: stock, name, price, cost, image } 
+        ? { action: 'updateStock', id, newStock: name, price, cost, stock, image } 
         : { action: 'addProduct', product: { id, name, price, cost, stock, image } };
     if(await syncData(payload)) hideModal('modal-add-product');
 }
