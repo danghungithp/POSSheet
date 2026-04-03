@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>H-STORE | Smart Inventory & POS</title>
+    <title>H-STORE 2026 | Smart Inventory & POS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.344.0/dist/umd/lucide.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -369,14 +369,14 @@ function editStock(id) {
         showModal('modal-add-product');
         document.getElementById('modal-title').innerText = "Chỉnh sửa sản phẩm";
         document.getElementById('inp-id').value = p.id;
-        document.getElementById('inp-id').readOnly = true; // Không cho sửa mã khi đang edit
+        document.getElementById('inp-id').readOnly = true; 
         document.getElementById('inp-name').value = p.name;
         document.getElementById('inp-image').value = p.image || '';
         document.getElementById('inp-price').value = p.price;
         document.getElementById('inp-cost').value = p.cost;
         document.getElementById('label-stock').innerText = "Cập nhật tồn kho (Số lượng hiện tại: " + p.stock + ")";
         document.getElementById('inp-stock').value = p.stock; 
-        document.getElementById('inp-image').oninput(); // Update preview
+        document.getElementById('inp-image').oninput(); // Kích hoạt preview ảnh
     }
 }
 
@@ -389,6 +389,8 @@ async function saveToSheet() {
     if(!id || !name) return showToast("Vui lòng nhập đủ thông tin!", true);
 
     const isEdit = document.getElementById('inp-id').readOnly;
+    
+    // Đảm bảo payload luôn có image trong cả 2 trường hợp
     const payload = isEdit 
         ? { action: 'updateStock', id, newStock: stock, name: name, price: price, cost: cost, image: image } 
         : { action: 'addProduct', product: { id, name, price, cost, stock: stock, image: image } };
