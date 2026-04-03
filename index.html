@@ -10,58 +10,19 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
-        
-        :root {
-            --primary: #2563eb;
-            --background: #f8fafc;
-        }
-
-        body { 
-            font-family: 'Plus Jakarta Sans', sans-serif; 
-            background-color: var(--background);
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .sidebar-item.active {
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            color: white;
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
-        }
-
+        :root { --primary: #2563eb; --background: #f8fafc; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--background); -webkit-tap-highlight-color: transparent; }
+        .sidebar-item.active { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2); }
         @media (max-width: 768px) {
             .main-content { padding-bottom: 80px; }
-            .mobile-bottom-nav {
-                position: fixed;
-                bottom: 0; left: 0; right: 0;
-                background: white;
-                display: flex;
-                justify-content: space-around;
-                padding: 12px;
-                border-top: 1px solid #e2e8f0;
-                z-index: 50;
-            }
-            .cart-panel {
-                position: fixed;
-                bottom: 70px; left: 0; right: 0;
-                background: white;
-                z-index: 40;
-                transform: translateY(100%);
-                transition: transform 0.3s ease;
-                border-radius: 24px 24px 0 0;
-                box-shadow: 0 -10px 25px rgba(0,0,0,0.1);
-            }
+            .mobile-bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; display: flex; justify-content: space-around; padding: 12px; border-top: 1px solid #e2e8f0; z-index: 50; }
+            .cart-panel { position: fixed; bottom: 70px; left: 0; right: 0; background: white; z-index: 40; transform: translateY(100%); transition: transform 0.3s ease; border-radius: 24px 24px 0 0; box-shadow: 0 -10px 25px rgba(0,0,0,0.1); }
             .cart-panel.open { transform: translateY(0); }
         }
-
         .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-
         @keyframes scan-line { 0% { top: 0; } 100% { top: 100%; } }
-        .scan-anim {
-            position: absolute; width: 100%; height: 2px;
-            background: #3b82f6; box-shadow: 0 0 15px #3b82f6;
-            animation: scan-line 2s linear infinite;
-        }
+        .scan-anim { position: absolute; width: 100%; height: 2px; background: #3b82f6; box-shadow: 0 0 15px #3b82f6; animation: scan-line 2s linear infinite; }
     </style>
 </head>
 <body class="antialiased text-slate-900">
@@ -150,25 +111,15 @@
                         </div>
                         <div id="pos-grid" class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4"></div>
                     </div>
-
-                    <!-- Giỏ hàng -->
                     <div id="cart-panel" class="cart-panel lg:block lg:static lg:w-[380px] lg:bg-white lg:rounded-[32px] lg:border lg:border-slate-100 flex flex-col max-h-[85vh] lg:max-h-none shadow-xl lg:shadow-none">
                         <div class="p-6 border-b border-slate-50 flex justify-between items-center">
-                            <h3 class="font-black text-slate-800 flex items-center gap-2">
-                                <i data-lucide="shopping-bag" class="text-blue-600"></i> GIỎ HÀNG
-                                <span id="cart-count" class="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">0</span>
-                            </h3>
+                            <h3 class="font-black text-slate-800 flex items-center gap-2"><i data-lucide="shopping-bag" class="text-blue-600"></i> GIỎ HÀNG <span id="cart-count" class="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">0</span></h3>
                             <button onclick="toggleMobileCart()" class="lg:hidden text-slate-400"><i data-lucide="chevron-down"></i></button>
                         </div>
                         <div id="cart-items" class="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar min-h-[200px]"></div>
                         <div class="p-6 bg-slate-50/80 border-t border-slate-100 space-y-4">
-                            <div class="flex justify-between items-end">
-                                <span class="text-slate-400 font-bold text-xs uppercase">Tổng cộng</span>
-                                <span id="cart-total" class="text-2xl font-black text-blue-600">0đ</span>
-                            </div>
-                            <button onclick="checkout()" class="w-full bg-blue-600 text-white py-5 rounded-2xl font-black shadow-xl active:scale-95 transition-transform flex items-center justify-center gap-2">
-                                <i data-lucide="zap" class="w-5 h-5 fill-white"></i> THANH TOÁN
-                            </button>
+                            <div class="flex justify-between items-end"><span class="text-slate-400 font-bold text-xs uppercase">Tổng cộng</span><span id="cart-total" class="text-2xl font-black text-blue-600">0đ</span></div>
+                            <button onclick="checkout()" class="w-full bg-blue-600 text-white py-5 rounded-2xl font-black shadow-xl active:scale-95 transition-transform flex items-center justify-center gap-2"><i data-lucide="zap" class="w-5 h-5 fill-white"></i> THANH TOÁN</button>
                         </div>
                     </div>
                 </div>
@@ -176,25 +127,14 @@
                 <!-- TAB INVENTORY -->
                 <div id="tab-inventory" class="tab-content hidden space-y-8">
                     <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
-                        <div>
-                            <h2 class="text-2xl font-black text-slate-800">Quản lý kho</h2>
-                            <p class="text-slate-500 font-medium text-sm">Kiểm tra và nhập hàng hóa</p>
-                        </div>
-                        <button onclick="showModal('modal-add-product')" class="w-full sm:w-auto bg-slate-900 text-white px-6 py-4 rounded-2xl flex items-center justify-center gap-2 font-bold shadow-xl active:scale-95 transition-transform">
-                            <i data-lucide="plus-circle" class="w-5 h-5"></i> Nhập hàng mới
-                        </button>
+                        <div><h2 class="text-2xl font-black text-slate-800">Quản lý kho</h2><p class="text-slate-500 font-medium text-sm">Kiểm tra và nhập hàng hóa</p></div>
+                        <button onclick="showModal('modal-add-product')" class="w-full sm:w-auto bg-slate-900 text-white px-6 py-4 rounded-2xl flex items-center justify-center gap-2 font-bold shadow-xl active:scale-95 transition-transform"><i data-lucide="plus-circle" class="w-5 h-5"></i> Nhập hàng mới</button>
                     </div>
-
                     <div class="bg-white rounded-[32px] border border-slate-100 overflow-hidden shadow-sm">
                         <div class="overflow-x-auto custom-scrollbar">
                             <table class="w-full text-left">
                                 <thead class="bg-slate-50/50 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                    <tr>
-                                        <th class="p-6">Sản phẩm</th>
-                                        <th class="p-6">Tồn kho</th>
-                                        <th class="p-6">Giá bán</th>
-                                        <th class="p-6">Thao tác</th>
-                                    </tr>
+                                    <tr><th class="p-6">Sản phẩm</th><th class="p-6">Tồn kho</th><th class="p-6">Giá bán</th><th class="p-6">Thao tác</th></tr>
                                 </thead>
                                 <tbody id="inventory-table-body" class="divide-y divide-slate-50"></tbody>
                             </table>
@@ -203,108 +143,79 @@
                 </div>
 
                 <!-- TAB ACCOUNTING -->
-                <div id="tab-accounting" class="tab-content hidden space-y-6">
+                <div id="tab-accounting" class="tab-content hidden space-y-8">
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
-                            <p class="text-slate-400 text-[10px] font-black uppercase mb-1">Doanh thu</p>
-                            <h4 id="acc-revenue" class="text-xl font-black text-slate-800">0đ</h4>
-                        </div>
-                        <div class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
-                            <p class="text-slate-400 text-[10px] font-black uppercase mb-1">Giá vốn</p>
-                            <h4 id="acc-cogs" class="text-xl font-black text-slate-800">0đ</h4>
-                        </div>
-                        <div class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
-                            <p class="text-slate-400 text-[10px] font-black uppercase mb-1">Lợi nhuận</p>
-                            <h4 id="acc-profit" class="text-xl font-black text-green-600">0đ</h4>
-                        </div>
-                        <div class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
-                            <p class="text-slate-400 text-[10px] font-black uppercase mb-1">Thuế dự tính</p>
-                            <h4 id="acc-tax" class="text-xl font-black text-red-500">0đ</h4>
-                        </div>
+                        <div class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm"><p class="text-slate-400 text-[10px] font-black uppercase mb-1">Doanh thu</p><h4 id="acc-revenue" class="text-xl font-black text-slate-800">0đ</h4></div>
+                        <div class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm"><p class="text-slate-400 text-[10px] font-black uppercase mb-1">Giá vốn</p><h4 id="acc-cogs" class="text-xl font-black text-slate-800">0đ</h4></div>
+                        <div class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm"><p class="text-slate-400 text-[10px] font-black uppercase mb-1">Lợi nhuận</p><h4 id="acc-profit" class="text-xl font-black text-green-600">0đ</h4></div>
+                        <div class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm"><p class="text-slate-400 text-[10px] font-black uppercase mb-1">Thuế dự tính</p><h4 id="acc-tax" class="text-xl font-black text-red-500">0đ</h4></div>
                     </div>
                     <div class="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm">
                         <h3 class="font-black mb-6 text-slate-800 uppercase text-xs tracking-widest">Biểu đồ doanh thu gần đây</h3>
                         <div class="h-64"><canvas id="revenueChart"></canvas></div>
+                    </div>
+                    <div class="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
+                        <div class="p-6 border-b border-slate-50 flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <h3 class="font-black text-slate-800 uppercase text-xs tracking-widest">Lịch sử hóa đơn</h3>
+                            <div class="flex gap-2 w-full sm:w-auto"><input type="date" id="history-date-filter" onchange="renderAccounting()" class="bg-slate-50 border-none rounded-xl px-4 py-2 text-xs font-bold text-slate-600 outline-none"></div>
+                        </div>
+                        <div class="overflow-x-auto custom-scrollbar">
+                            <table class="w-full text-left">
+                                <thead class="bg-slate-50/50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                    <tr><th class="p-6">Mã HD / Thời gian</th><th class="p-6">Chi tiết</th><th class="p-6 text-right">Tổng tiền</th><th class="p-6 text-center">In</th></tr>
+                                </thead>
+                                <tbody id="history-table-body" class="divide-y divide-slate-50"></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
         </main>
     </div>
 
-    <!-- Modal Nhập hàng (Giữ nguyên logic bạn vừa chạy được) -->
+    <!-- Modals & Overlays -->
     <div id="modal-add-product" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-[32px] p-8 shadow-2xl">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-xl font-black text-slate-800">Nhập hàng vào kho</h3>
-                <button onclick="hideModal('modal-add-product')" class="text-slate-400"><i data-lucide="x"></i></button>
-            </div>
+            <div class="flex justify-between items-center mb-6"><h3 class="text-xl font-black text-slate-800">Nhập hàng</h3><button onclick="hideModal('modal-add-product')" class="text-slate-400"><i data-lucide="x"></i></button></div>
             <div class="space-y-4">
-                <div class="relative">
-                    <label class="text-[10px] font-black text-slate-400 uppercase">Mã vạch</label>
-                    <input type="text" id="inp-id" class="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold pr-14" placeholder="Quét mã...">
-                    <button onclick="openScanner('inventory')" class="absolute right-3 top-7 p-2 bg-blue-600 text-white rounded-xl shadow-lg">
-                        <i data-lucide="scan" class="w-5 h-5"></i>
-                    </button>
-                </div>
-                <div><label class="text-[10px] font-black text-slate-400 uppercase">Tên sản phẩm</label><input type="text" id="inp-name" class="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold"></div>
+                <div class="relative"><label class="text-[10px] font-black text-slate-400 uppercase">Mã vạch</label><input type="text" id="inp-id" class="w-full p-4 bg-slate-50 rounded-2xl outline-none pr-14"><button onclick="openScanner('inventory')" class="absolute right-3 top-7 p-2 bg-blue-600 text-white rounded-xl shadow-lg"><i data-lucide="scan" class="w-5 h-5"></i></button></div>
+                <div><label class="text-[10px] font-black text-slate-400 uppercase">Tên sản phẩm</label><input type="text" id="inp-name" class="w-full p-4 bg-slate-50 rounded-2xl outline-none"></div>
                 <div class="grid grid-cols-2 gap-4">
-                    <div><label class="text-[10px] font-black text-slate-400 uppercase">Giá bán</label><input type="number" id="inp-price" class="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold"></div>
-                    <div><label class="text-[10px] font-black text-slate-400 uppercase">Giá vốn</label><input type="number" id="inp-cost" class="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold"></div>
+                    <div><label class="text-[10px] font-black text-slate-400 uppercase">Giá bán</label><input type="number" id="inp-price" class="w-full p-4 bg-slate-50 rounded-2xl outline-none"></div>
+                    <div><label class="text-[10px] font-black text-slate-400 uppercase">Giá vốn</label><input type="number" id="inp-cost" class="w-full p-4 bg-slate-50 rounded-2xl outline-none"></div>
                 </div>
-                <div><label class="text-[10px] font-black text-slate-400 uppercase">Số lượng nhập thêm</label><input type="number" id="inp-stock" value="1" class="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold"></div>
-                <button id="btn-save" onclick="saveToSheet()" class="w-full bg-blue-600 text-white py-5 rounded-2xl font-black shadow-lg transition-all active:scale-95">LƯU VÀO GOOGLE SHEET</button>
+                <div><label class="text-[10px] font-black text-slate-400 uppercase">Số lượng thêm</label><input type="number" id="inp-stock" value="1" class="w-full p-4 bg-slate-50 rounded-2xl outline-none"></div>
+                <button id="btn-save" onclick="saveToSheet()" class="w-full bg-blue-600 text-white py-5 rounded-2xl font-black">LƯU THÔNG TIN</button>
             </div>
         </div>
     </div>
-
-    <!-- Scanner Overlay -->
     <div id="scanner-container" class="fixed inset-0 bg-black/90 z-[100] hidden flex flex-col items-center justify-center p-6">
-        <div class="relative w-full max-w-sm aspect-square bg-slate-900 rounded-[40px] overflow-hidden border-4 border-blue-600/30">
-            <video id="video" class="w-full h-full object-cover"></video>
-            <div class="scan-anim"></div>
-        </div>
+        <div class="relative w-full max-w-sm aspect-square bg-slate-900 rounded-[40px] overflow-hidden border-4 border-blue-600/30"><video id="video" class="w-full h-full object-cover"></video><div class="scan-anim"></div></div>
         <button onclick="stopScanner()" class="mt-8 bg-white/10 text-white px-12 py-4 rounded-2xl font-black">HỦY BỎ</button>
     </div>
-
-    <!-- Toast Notification -->
     <div id="toast" class="fixed top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-8 py-4 rounded-2xl shadow-2xl transition-all transform -translate-y-24 opacity-0 z-[110] flex items-center gap-3 font-bold"></div>
 </div>
 
 <script>
-// --- CẤU HÌNH API ---
 const API_URL = 'https://script.google.com/macros/s/AKfycbyFt1Js_-hQaD2AH_O99okeckkD9nnXjkz4EjLfK1dix5uXtWYUetXuz5tMvcMNz8z5/exec';
+let products = [], transactions = [], cart = [], chart = null, activeScanner = 'pos';
+const codeReader = new ZXing.BrowserMultiFormatReader();
 
-let products = [];
-let transactions = [];
-let cart = [];
-let codeReader = new ZXing.BrowserMultiFormatReader();
-let activeScanner = 'pos';
-let chart = null;
-
-// --- KHỞI TẠO ---
-window.onload = () => {
-    lucide.createIcons();
-    if(localStorage.getItem('hstore_auth')) showDashboard();
-};
+window.onload = () => { lucide.createIcons(); if(localStorage.getItem('hstore_auth')) showDashboard(); };
 
 function handleLogin(e) {
     e.preventDefault();
-    const u = document.getElementById('username').value;
-    const p = document.getElementById('password').value;
-    if(u === 'banhang' && p === 'Banhang@85') {
-        localStorage.setItem('hstore_auth', 'true');
-        showDashboard();
-    } else showToast("Sai thông tin!", true);
+    const u = document.getElementById('username').value, p = document.getElementById('password').value;
+    if(u === 'banhang' && p === 'Banhang@85') { localStorage.setItem('hstore_auth', 'true'); showDashboard(); }
+    else showToast("Sai thông tin!", true);
 }
 
 function showDashboard() {
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('main-dashboard').classList.remove('hidden');
-    loadData();
-    switchTab('pos');
+    loadData(); switchTab('pos');
 }
 
-// --- DỮ LIỆU ---
 async function loadData() {
     updateSyncStatus('syncing');
     try {
@@ -312,46 +223,26 @@ async function loadData() {
         const data = await res.json();
         products = data.products || [];
         transactions = data.transactions || [];
-        renderAll();
-        updateSyncStatus('online');
-    } catch (e) {
-        updateSyncStatus('offline');
-        showToast("Lỗi tải dữ liệu!", true);
-    }
+        renderAll(); updateSyncStatus('online');
+    } catch (e) { updateSyncStatus('offline'); showToast("Lỗi tải dữ liệu!", true); }
 }
 
 async function syncData(payload) {
     updateSyncStatus('syncing');
     try {
-        await fetch(API_URL, {
-            method: 'POST',
-            mode: 'no-cors',
-            headers: {'Content-Type': 'text/plain'},
-            body: JSON.stringify(payload)
-        });
-        showToast("Đã gửi yêu cầu lưu!");
-        setTimeout(loadData, 1500); // Tự động load lại sau khi đẩy
-        return true;
-    } catch (e) {
-        showToast("Lỗi đồng bộ!", true);
-        updateSyncStatus('offline');
-        return false;
-    }
+        await fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
+        showToast("Đã gửi yêu cầu!"); setTimeout(loadData, 1500); return true;
+    } catch (e) { showToast("Lỗi!", true); updateSyncStatus('offline'); return false; }
 }
 
-// --- TAB POS ---
+function renderAll() { renderPOS(); renderInventory(); renderAccounting(); }
+
 function renderPOS(filter = null) {
     const list = filter || products;
     const container = document.getElementById('pos-grid');
-    if(!list.length) {
-        container.innerHTML = `<div class="col-span-full py-10 text-center text-slate-400 font-bold">Không có sản phẩm</div>`;
-        return;
-    }
     container.innerHTML = list.map(p => `
-        <div onclick="addToCart('${p.id}')" class="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:border-blue-400 cursor-pointer transition-all active:scale-95 group">
-            <div class="aspect-square bg-slate-50 rounded-2xl flex items-center justify-center mb-3 group-hover:bg-blue-50">
-                <i data-lucide="package" class="w-8 h-8 text-slate-200"></i>
-            </div>
+        <div onclick="addToCart('${p.id}')" class="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm hover:border-blue-400 cursor-pointer active:scale-95 transition-all group">
+            <div class="aspect-square bg-slate-50 rounded-2xl flex items-center justify-center mb-3"><i data-lucide="package" class="w-8 h-8 text-slate-200"></i></div>
             <h5 class="font-bold text-slate-800 text-xs line-clamp-2 h-8">${p.name}</h5>
             <div class="mt-2 flex justify-between items-center">
                 <span class="text-blue-600 font-black text-sm">${formatVND(p.price)}</span>
@@ -362,40 +253,30 @@ function renderPOS(filter = null) {
     lucide.createIcons();
 }
 
-function searchProduct(val) {
-    const term = val.toLowerCase();
-    const filtered = products.filter(p => p.id.toString().includes(term) || p.name.toLowerCase().includes(term));
-    renderPOS(filtered);
+function searchProduct(v) {
+    const t = v.toLowerCase();
+    renderPOS(products.filter(p => p.id.toString().includes(t) || p.name.toLowerCase().includes(t)));
 }
 
 function addToCart(id) {
     const p = products.find(x => x.id.toString() === id.toString());
     if(!p || p.stock <= 0) return showToast("Hết hàng!", true);
     const exist = cart.find(i => i.id === id);
-    if(exist) {
-        if(exist.qty < p.stock) exist.qty++;
-        else showToast("Hết kho!", true);
-    } else cart.push({...p, qty: 1});
+    if(exist) { if(exist.qty < p.stock) exist.qty++; else return showToast("Hết kho!", true); }
+    else cart.push({...p, qty: 1});
     renderCart();
 }
 
 function renderCart() {
     const container = document.getElementById('cart-items');
     document.getElementById('cart-count').innerText = cart.length;
-    if(!cart.length) {
-        container.innerHTML = `<div class="h-40 flex flex-col items-center justify-center text-slate-300"><i data-lucide="shopping-basket" class="mb-2"></i><p class="text-xs font-bold">Giỏ trống</p></div>`;
-    } else {
-        container.innerHTML = cart.map(item => `
-            <div class="flex items-center gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center font-black text-blue-600 text-xs">${item.qty}x</div>
-                <div class="flex-1 min-w-0">
-                    <h6 class="font-bold text-slate-800 text-xs truncate">${item.name}</h6>
-                    <p class="text-[10px] font-black text-blue-500">${formatVND(item.price)}</p>
-                </div>
-                <button onclick="removeFromCart('${item.id}')" class="text-slate-300 hover:text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-            </div>
-        `).join('');
-    }
+    container.innerHTML = cart.length ? cart.map(item => `
+        <div class="flex items-center gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+            <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center font-black text-blue-600 text-xs">${item.qty}x</div>
+            <div class="flex-1 min-w-0"><h6 class="font-bold text-slate-800 text-xs truncate">${item.name}</h6><p class="text-[10px] font-black text-blue-500">${formatVND(item.price)}</p></div>
+            <button onclick="removeFromCart('${item.id}')" class="text-slate-300 hover:text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+        </div>
+    `).join('') : '<div class="h-40 flex flex-col items-center justify-center text-slate-300"><p class="text-xs font-bold">Giỏ trống</p></div>';
     const total = cart.reduce((s, i) => s + (i.price * i.qty), 0);
     document.getElementById('cart-total').innerText = formatVND(total);
     lucide.createIcons();
@@ -406,39 +287,20 @@ function removeFromCart(id) { cart = cart.filter(i => i.id !== id); renderCart()
 async function checkout() {
     if(!cart.length) return;
     const total = cart.reduce((s, i) => s + (i.price * i.qty), 0);
-    const totalCost = cart.reduce((s, i) => s + (i.cost * i.qty), 0);
-    const tx = {
-        id: 'TX' + Date.now(),
-        timestamp: new Date().toLocaleString('vi-VN'),
-        items: cart.map(i => `${i.name} (${i.qty})`).join(', '),
-        total,
-        totalCost
-    };
-    const stockUpdates = cart.map(i => {
-        const p = products.find(x => x.id === i.id);
-        return { id: i.id, newStock: p.stock - i.qty };
-    });
-
+    const totalcost = cart.reduce((s, i) => s + (i.cost * i.qty), 0);
+    const tx = { id: 'TX'+Date.now(), timestamp: new Date().toLocaleString('vi-VN'), items: cart.map(i => `${i.name}(${i.qty})`).join(','), total, totalcost };
+    const stockUpdates = cart.map(i => ({ id: i.id, newStock: products.find(x => x.id === i.id).stock - i.qty }));
     const ok = await syncData({ action: 'addTransaction', transaction: tx, stockUpdates });
     if(ok) { cart = []; renderCart(); }
 }
 
-// --- TAB KHO HÀNG ---
 function renderInventory() {
-    const tbody = document.getElementById('inventory-table-body');
-    tbody.innerHTML = products.map(p => `
-        <tr class="hover:bg-slate-50 transition-colors">
-            <td class="p-6">
-                <p class="font-black text-slate-800 text-sm">${p.name}</p>
-                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Mã: ${p.id}</p>
-            </td>
-            <td class="p-6">
-                <span class="px-3 py-1 rounded-lg text-xs font-black ${p.stock < 10 ? 'bg-red-50 text-red-500' : 'bg-slate-50 text-slate-600'}">${p.stock} đv</span>
-            </td>
+    document.getElementById('inventory-table-body').innerHTML = products.map(p => `
+        <tr>
+            <td class="p-6"><p class="font-black text-slate-800 text-sm">${p.name}</p><p class="text-[10px] text-slate-400 font-bold uppercase">Mã: ${p.id}</p></td>
+            <td class="p-6"><span class="px-3 py-1 rounded-lg text-xs font-black ${p.stock < 10 ? 'bg-red-50 text-red-500' : 'bg-slate-50 text-slate-600'}">${p.stock}</span></td>
             <td class="p-6 text-sm font-black text-slate-700">${formatVND(p.price)}</td>
-            <td class="p-6">
-                <button onclick="editStock('${p.id}')" class="text-blue-600 hover:text-blue-800"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
-            </td>
+            <td class="p-6"><button onclick="editStock('${p.id}')" class="text-blue-600"><i data-lucide="edit-3" class="w-4 h-4"></i></button></td>
         </tr>
     `).join('');
     lucide.createIcons();
@@ -446,136 +308,117 @@ function renderInventory() {
 
 function editStock(id) {
     const p = products.find(x => x.id.toString() === id.toString());
-    if(p) {
+    if(p) { 
         showModal('modal-add-product');
         document.getElementById('inp-id').value = p.id;
         document.getElementById('inp-name').value = p.name;
         document.getElementById('inp-price').value = p.price;
         document.getElementById('inp-cost').value = p.cost;
-        document.getElementById('inp-stock').focus();
+        document.getElementById('inp-stock').value = 1;
     }
 }
 
 async function saveToSheet() {
-    const btn = document.getElementById('btn-save');
-    const id = document.getElementById('inp-id').value.trim();
-    const name = document.getElementById('inp-name').value.trim();
-    const price = Number(document.getElementById('inp-price').value);
-    const cost = Number(document.getElementById('inp-cost').value);
-    const addStock = Number(document.getElementById('inp-stock').value);
-
-    if(!id || !name) return showToast("Thiếu thông tin!", true);
-
-    btn.disabled = true;
-    btn.innerText = "ĐANG LƯU...";
-    
+    const id = document.getElementById('inp-id').value, name = document.getElementById('inp-name').value;
+    const price = Number(document.getElementById('inp-price').value), cost = Number(document.getElementById('inp-cost').value);
+    const add = Number(document.getElementById('inp-stock').value);
     const pExist = products.find(p => p.id.toString() === id.toString());
-    let payload;
-
-    if(pExist) {
-        payload = { action: 'updateStock', id: id, newStock: Number(pExist.stock) + addStock };
-    } else {
-        payload = { action: 'addProduct', product: { id, name, price, cost, stock: addStock } };
-    }
-
-    const ok = await syncData(payload);
-    if(ok) {
-        hideModal('modal-add-product');
-        // Reset form
-        document.getElementById('inp-id').value = '';
-        document.getElementById('inp-name').value = '';
-    }
-    btn.disabled = false;
-    btn.innerText = "LƯU VÀO GOOGLE SHEET";
+    const payload = pExist ? { action: 'updateStock', id, newStock: Number(pExist.stock) + add } : { action: 'addProduct', product: { id, name, price, cost, stock: add } };
+    if(await syncData(payload)) hideModal('modal-add-product');
 }
 
-// --- TAB TÀI CHÍNH ---
 function renderAccounting() {
-    const rev = transactions.reduce((s, t) => s + t.total, 0);
-    const cogs = transactions.reduce((s, t) => s + (t.totalcost || 0), 0);
+    const filter = document.getElementById('history-date-filter').value;
+    let list = transactions;
+    if(filter) {
+        const [y,m,d] = filter.split('-');
+        const ds = `${parseInt(d)}/${parseInt(m)}/${y}`;
+        list = transactions.filter(t => t.timestamp.startsWith(ds));
+    }
+    const rev = transactions.reduce((s,t) => s + t.total, 0), cost = transactions.reduce((s,t) => s + (t.totalcost||0), 0);
     document.getElementById('acc-revenue').innerText = formatVND(rev);
-    document.getElementById('acc-cogs').innerText = formatVND(cogs);
-    document.getElementById('acc-profit').innerText = formatVND(rev - cogs);
-    document.getElementById('acc-tax').innerText = formatVND(rev * 0.1);
+    document.getElementById('acc-cogs').innerText = formatVND(cost);
+    document.getElementById('acc-profit').innerText = formatVND(rev-cost);
+    document.getElementById('acc-tax').innerText = formatVND(rev*0.1);
+
+    document.getElementById('history-table-body').innerHTML = list.length ? [...list].reverse().map(t => `
+        <tr class="hover:bg-slate-50 transition-colors">
+            <td class="p-6"><p class="font-black text-slate-800 text-xs">${t.id}</p><p class="text-[10px] text-slate-400 font-bold">${t.timestamp}</p></td>
+            <td class="p-6"><p class="text-xs text-slate-600 truncate max-w-[200px]">${t.items}</p></td>
+            <td class="p-6 text-right font-black text-blue-600 text-sm">${formatVND(t.total)}</td>
+            <td class="p-6 text-center"><button onclick="printInvoice('${t.id}')" class="p-2 bg-slate-100 rounded-xl hover:bg-blue-600 hover:text-white"><i data-lucide="printer" class="w-4 h-4"></i></button></td>
+        </tr>
+    `).join('') : '<tr><td colspan="4" class="p-10 text-center text-slate-400 font-bold">Trống</td></tr>';
 
     const ctx = document.getElementById('revenueChart').getContext('2d');
     if(chart) chart.destroy();
     chart = new Chart(ctx, {
         type: 'line',
-        data: {
-            labels: transactions.slice(-7).map(t => t.timestamp.split(' ')[1]),
-            datasets: [{ label: 'Doanh thu', data: transactions.slice(-7).map(t => t.total), borderColor: '#3b82f6', tension: 0.4, fill: true, backgroundColor: 'rgba(59,130,246,0.1)' }]
-        },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { display: false }, x: { grid: { display: false } } } }
+        data: { labels: transactions.slice(-7).map(t => t.timestamp.split(' ')[1]), datasets: [{ label: 'Doanh thu', data: transactions.slice(-7).map(t => t.total), borderColor: '#3b82f6', tension: 0.4 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
     });
+    lucide.createIcons();
 }
 
-// --- UI HELPERS ---
-function renderAll() {
-    renderPOS();
-    renderInventory();
-    renderAccounting();
+function printInvoice(id) {
+    const t = transactions.find(x => x.id === id); if(!t) return;
+    const w = window.open('', '_blank');
+    w.document.write(`<html><body style="font-family:sans-serif;padding:40px;"><h2>H-STORE 2026</h2><p>Mã HD: ${t.id}<br>Ngày: ${t.timestamp}</p><hr><div>Hàng hóa: ${t.items}</div><h3>Tổng tiền: ${formatVND(t.total)}</h3><script>window.print();window.close();<\/script></body></html>`);
+    w.document.close();
 }
 
 function switchTab(t) {
     document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
     document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
     document.querySelectorAll('[data-mobile-tab]').forEach(i => i.classList.remove('text-blue-600'));
-    
     document.getElementById(`tab-${t}`).classList.remove('hidden');
-    const pc = document.querySelector(`[data-tab="${t}"]`); if(pc) pc.classList.add('active');
-    const mb = document.querySelector(`[data-mobile-tab="${t}"]`); if(mb) mb.classList.add('text-blue-600');
-    
-    const ts = { pos: 'Bán hàng POS', inventory: 'Kho hàng & Nhập kho', accounting: 'Báo cáo Tài chính' };
+    const pc = document.querySelector(`[data-tab="${t}"]`), mb = document.querySelector(`[data-mobile-tab="${t}"]`);
+    if(pc) pc.classList.add('active'); if(mb) mb.classList.add('text-blue-600');
+    const ts = { pos: 'Bán hàng', inventory: 'Kho hàng', accounting: 'Tài chính' };
     document.getElementById('current-tab-title').innerText = ts[t];
     if(t === 'accounting') renderAccounting();
     lucide.createIcons();
 }
 
 function openScanner(ctx) {
-    activeScanner = ctx;
-    document.getElementById('scanner-container').classList.remove('hidden');
-    codeReader.decodeFromVideoDevice(null, 'video', (result) => {
-        if(result) {
-            const code = result.text;
-            if(activeScanner === 'pos') {
-                document.getElementById('pos-search').value = code;
-                searchProduct(code);
-            } else {
-                document.getElementById('inp-id').value = code;
-                const p = products.find(x => x.id.toString() === code.toString());
-                if(p) {
-                    document.getElementById('inp-name').value = p.name;
-                    document.getElementById('inp-price').value = p.price;
-                    document.getElementById('inp-cost').value = p.cost;
-                    showToast("Tìm thấy: " + p.name);
-                }
-            }
+    activeScanner = ctx; document.getElementById('scanner-container').classList.remove('hidden');
+    codeReader.decodeFromVideoDevice(null, 'video', (res) => {
+        if(res) {
+            const code = res.text;
+            if(activeScanner === 'pos') { document.getElementById('pos-search').value = code; searchProduct(code); }
+            else { document.getElementById('inp-id').value = code; }
             stopScanner();
         }
     });
 }
 
 function stopScanner() { codeReader.reset(); document.getElementById('scanner-container').classList.add('hidden'); }
-function showModal(id) { document.getElementById(id).classList.remove('hidden'); }
+
+function showModal(id) { 
+    // Xóa trắng form khi bấm nút Nhập hàng mới
+    if(id === 'modal-add-product') {
+        document.getElementById('inp-id').value = '';
+        document.getElementById('inp-name').value = '';
+        document.getElementById('inp-price').value = '';
+        document.getElementById('inp-cost').value = '';
+        document.getElementById('inp-stock').value = 1;
+    }
+    document.getElementById(id).classList.remove('hidden'); 
+}
+
 function hideModal(id) { document.getElementById(id).classList.add('hidden'); }
 function formatVND(n) { return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n); }
 function logout() { localStorage.removeItem('hstore_auth'); location.reload(); }
 function toggleMobileCart() { document.getElementById('cart-panel').classList.toggle('open'); }
-
 function showToast(msg, err = false) {
-    const t = document.getElementById('toast');
-    t.innerText = msg;
-    t.className = `fixed top-8 left-1/2 -translate-x-1/2 px-8 py-4 rounded-2xl shadow-2xl transition-all transform translate-y-0 opacity-100 z-[110] font-bold ${err ? 'bg-red-600' : 'bg-slate-900'} text-white`;
-    setTimeout(() => t.classList.add('opacity-0', '-translate-y-24'), 3000);
+    const t = document.getElementById('toast'); t.innerText = msg;
+    t.className = `fixed top-8 left-1/2 -translate-x-1/2 px-8 py-4 rounded-2xl shadow-2xl transition-all font-bold ${err ? 'bg-red-600' : 'bg-slate-900'} text-white opacity-100 translate-y-0`;
+    setTimeout(() => { t.classList.add('opacity-0', '-translate-y-24'); }, 3000);
 }
-
 function updateSyncStatus(s) {
-    const dot = document.getElementById('sync-dot');
-    const txt = document.getElementById('sync-text');
-    if(s === 'syncing') { dot.className = 'w-2.5 h-2.5 rounded-full bg-yellow-500 animate-pulse'; txt.innerText = 'Đang lưu...'; }
-    else if(s === 'online') { dot.className = 'w-2.5 h-2.5 rounded-full bg-green-500'; txt.innerText = 'Online'; }
-    else { dot.className = 'w-2.5 h-2.5 rounded-full bg-red-500'; txt.innerText = 'Mất kết nối'; }
+    const dot = document.getElementById('sync-dot'), txt = document.getElementById('sync-text');
+    dot.className = `w-2.5 h-2.5 rounded-full ${s==='online'?'bg-green-500':s==='syncing'?'bg-yellow-500 animate-pulse':'bg-red-500'}`;
+    txt.innerText = s==='online'?'Online':s==='syncing'?'Syncing':'Offline';
 }
 </script>
 </body>
