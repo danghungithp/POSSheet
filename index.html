@@ -11,19 +11,63 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
         :root { --primary: #2563eb; --background: #f8fafc; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--background); -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--background); -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
         .sidebar-item.active { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2); }
+        
         @media (max-width: 768px) {
-            .main-content { padding-bottom: 80px; }
+            .main-content { padding-bottom: 90px; }
             .mobile-bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; display: flex; justify-content: space-around; padding: 12px; border-top: 1px solid #e2e8f0; z-index: 50; }
-            .cart-panel { position: fixed; bottom: 70px; left: 0; right: 0; background: white; z-index: 40; transform: translateY(100%); transition: transform 0.3s ease; border-radius: 24px 24px 0 0; box-shadow: 0 -10px 25px rgba(0,0,0,0.1); }
+            .cart-panel { 
+                position: fixed; 
+                bottom: 0; 
+                left: 0; 
+                right: 0; 
+                background: white; 
+                z-index: 60; 
+                transform: translateY(100%); 
+                transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
+                border-radius: 32px 32px 0 0; 
+                box-shadow: 0 -15px 35px rgba(0,0,0,0.15);
+                height: 80vh;
+            }
             .cart-panel.open { transform: translateY(0); }
+            .cart-overlay {
+                position: fixed;
+                inset: 0;
+                background: rgba(15, 23, 42, 0.5);
+                backdrop-filter: blur(4px);
+                z-index: 55;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.3s;
+            }
+            .cart-overlay.show { opacity: 1; pointer-events: auto; }
         }
+
         .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         @keyframes scan-line { 0% { top: 0; } 100% { top: 100%; } }
         .scan-anim { position: absolute; width: 100%; height: 2px; background: #3b82f6; box-shadow: 0 0 15px #3b82f6; animation: scan-line 2s linear infinite; }
         .product-img { object-fit: cover; width: 100%; height: 100%; }
+        
+        /* Floating Cart Button for Mobile */
+        .fab-cart {
+            position: fixed;
+            bottom: 85px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: #2563eb;
+            color: white;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 25px rgba(37, 99, 235, 0.4);
+            z-index: 45;
+            transition: all 0.3s;
+        }
+        .fab-cart:active { scale: 0.9; }
     </style>
 </head>
 <body class="antialiased text-slate-900">
@@ -89,6 +133,14 @@
             </button>
         </nav>
 
+        <!-- Mobile Floating Cart Button -->
+        <button id="mobile-cart-fab" onclick="toggleMobileCart()" class="md:hidden fab-cart">
+            <div class="relative">
+                <i data-lucide="shopping-bag" class="w-7 h-7"></i>
+                <span id="mobile-cart-badge" class="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-white font-bold hidden">0</span>
+            </div>
+        </button>
+
         <main class="flex-1 main-content overflow-y-auto relative bg-[#f8fafc]">
             <header class="bg-white/80 backdrop-blur-md sticky top-0 z-20 px-6 py-4 flex justify-between items-center border-b border-slate-200">
                 <h2 id="current-tab-title" class="text-xl font-black text-slate-800">Bán hàng</h2>
@@ -112,17 +164,21 @@
                         </div>
                         <div id="pos-grid" class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4"></div>
                     </div>
-                    <div id="cart-panel" class="cart-panel lg:block lg:static lg:w-[380px] lg:bg-white lg:rounded-[32px] lg:border lg:border-slate-100 flex flex-col max-h-[85vh] lg:max-h-none shadow-xl lg:shadow-none">
+
+                    <!-- Cart Overlay for Mobile -->
+                    <div id="cart-overlay" class="cart-overlay md:hidden" onclick="toggleMobileCart()"></div>
+
+                    <div id="cart-panel" class="cart-panel lg:block lg:static lg:w-[380px] lg:bg-white lg:rounded-[32px] lg:border lg:border-slate-100 flex flex-col shadow-xl lg:shadow-none">
                         <div class="p-6 border-b border-slate-50 flex justify-between items-center">
                             <h3 class="font-black text-slate-800 flex items-center gap-2"><i data-lucide="shopping-bag" class="text-blue-600"></i> GIỎ HÀNG <span id="cart-count" class="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">0</span></h3>
                             <div class="flex gap-2">
                                 <button onclick="clearCart()" class="text-red-500 hover:bg-red-50 p-2 rounded-xl transition-colors" title="Hủy đơn hàng">
                                     <i data-lucide="trash-2" class="w-5 h-5"></i>
                                 </button>
-                                <button onclick="toggleMobileCart()" class="lg:hidden text-slate-400"><i data-lucide="chevron-down"></i></button>
+                                <button onclick="toggleMobileCart()" class="lg:hidden text-slate-400 p-2"><i data-lucide="chevron-down" class="w-6 h-6"></i></button>
                             </div>
                         </div>
-                        <div id="cart-items" class="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar min-h-[200px]"></div>
+                        <div id="cart-items" class="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar"></div>
                         <div class="p-6 bg-slate-50/80 border-t border-slate-100 space-y-4">
                             <div class="flex justify-between items-end"><span class="text-slate-400 font-bold text-xs uppercase">Tổng cộng</span><span id="cart-total" class="text-2xl font-black text-blue-600">0đ</span></div>
                             <button onclick="checkout()" class="w-full bg-blue-600 text-white py-5 rounded-2xl font-black shadow-xl active:scale-95 transition-transform flex items-center justify-center gap-2"><i data-lucide="zap" class="w-5 h-5 fill-white"></i> THANH TOÁN</button>
@@ -130,7 +186,7 @@
                     </div>
                 </div>
 
-                <!-- TAB INVENTORY -->
+                <!-- TAB INVENTORY (Giữ nguyên) -->
                 <div id="tab-inventory" class="tab-content hidden space-y-8">
                     <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
                         <div><h2 class="text-2xl font-black text-slate-800">Quản lý kho</h2><p class="text-slate-500 font-medium text-sm">Kiểm tra và nhập hàng hóa</p></div>
@@ -148,7 +204,7 @@
                     </div>
                 </div>
 
-                <!-- TAB ACCOUNTING -->
+                <!-- TAB ACCOUNTING (Giữ nguyên) -->
                 <div id="tab-accounting" class="tab-content hidden space-y-8">
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div class="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm"><p class="text-slate-400 text-[10px] font-black uppercase mb-1">Doanh thu</p><h4 id="acc-revenue" class="text-xl font-black text-slate-800">0đ</h4></div>
@@ -179,7 +235,7 @@
         </main>
     </div>
 
-    <!-- Modals & Overlays -->
+    <!-- Modals -->
     <div id="modal-add-product" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-[32px] p-8 shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
             <div class="flex justify-between items-center mb-6"><h3 id="modal-title" class="text-xl font-black text-slate-800">Nhập hàng</h3><button onclick="hideModal('modal-add-product')" class="text-slate-400"><i data-lucide="x"></i></button></div>
@@ -197,15 +253,17 @@
                     <div><label class="text-[10px] font-black text-slate-400 uppercase">Giá bán</label><input type="number" id="inp-price" class="w-full p-4 bg-slate-50 rounded-2xl outline-none"></div>
                     <div><label class="text-[10px] font-black text-slate-400 uppercase">Giá vốn</label><input type="number" id="inp-cost" class="w-full p-4 bg-slate-50 rounded-2xl outline-none"></div>
                 </div>
-                <div><label id="label-stock" class="text-[10px] font-black text-slate-400 uppercase">Số lượng thêm</label><input type="number" id="inp-stock" value="1" class="w-full p-4 bg-slate-50 rounded-2xl outline-none"></div>
+                <div><label id="label-stock" class="text-[10px] font-black text-slate-400 uppercase">Số lượng</label><input type="number" id="inp-stock" value="1" class="w-full p-4 bg-slate-50 rounded-2xl outline-none"></div>
                 <button id="btn-save" onclick="saveToSheet()" class="w-full bg-blue-600 text-white py-5 rounded-2xl font-black">LƯU THÔNG TIN</button>
             </div>
         </div>
     </div>
+
     <div id="scanner-container" class="fixed inset-0 bg-black/90 z-[100] hidden flex flex-col items-center justify-center p-6">
         <div class="relative w-full max-w-sm aspect-square bg-slate-900 rounded-[40px] overflow-hidden border-4 border-blue-600/30"><video id="video" class="w-full h-full object-cover"></video><div class="scan-anim"></div></div>
         <button onclick="stopScanner()" class="mt-8 bg-white/10 text-white px-12 py-4 rounded-2xl font-black">HỦY BỎ</button>
     </div>
+
     <div id="toast" class="fixed top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-8 py-4 rounded-2xl shadow-2xl transition-all transform -translate-y-24 opacity-0 z-[110] flex items-center gap-3 font-bold"></div>
 </div>
 
@@ -218,7 +276,6 @@ window.onload = () => {
     lucide.createIcons(); 
     if(localStorage.getItem('hstore_auth')) showDashboard(); 
     
-    // Preview ảnh khi nhập URL
     document.getElementById('inp-image').oninput = function() {
         const box = document.getElementById('image-preview-box');
         if(this.value) {
@@ -270,12 +327,12 @@ function renderPOS(filter = null) {
     container.innerHTML = list.map(p => {
         const imgHtml = p.image ? `<img src="${p.image}" class="product-img rounded-2xl">` : `<i data-lucide="package" class="w-8 h-8 text-slate-200"></i>`;
         return `
-        <div onclick="addToCart('${p.id}')" class="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm hover:border-blue-400 cursor-pointer active:scale-95 transition-all group">
+        <div onclick="addToCart('${p.id}')" class="bg-white p-3 rounded-3xl border border-slate-100 shadow-sm hover:border-blue-400 cursor-pointer active:scale-95 transition-all group">
             <div class="aspect-square bg-slate-50 rounded-2xl flex items-center justify-center mb-3 overflow-hidden">${imgHtml}</div>
-            <h5 class="font-bold text-slate-800 text-xs line-clamp-2 h-8">${p.name}</h5>
+            <h5 class="font-bold text-slate-800 text-[11px] leading-tight line-clamp-2 h-7">${p.name}</h5>
             <div class="mt-2 flex justify-between items-center">
-                <span class="text-blue-600 font-black text-sm">${formatVND(p.price)}</span>
-                <span class="text-[10px] font-black ${p.stock <= 0 ? 'text-red-400' : 'text-slate-300'}">Tồn: ${p.stock}</span>
+                <span class="text-blue-600 font-black text-xs">${formatVND(p.price)}</span>
+                <span class="text-[9px] font-black ${p.stock <= 0 ? 'text-red-400' : 'text-slate-300'}">Tồn: ${p.stock}</span>
             </div>
         </div>
     `}).join('');
@@ -292,28 +349,60 @@ function addToCart(id) {
     if(!p || p.stock <= 0) return showToast("Hết hàng!", true);
     const exist = cart.find(i => i.id === id);
     if(exist) { if(exist.qty < p.stock) exist.qty++; else return showToast("Hết kho!", true); }
-    else cart.push({...p, qty: 1});
+    else {
+        cart.push({...p, qty: 1});
+        // Mở giỏ hàng tự động ở sản phẩm đầu tiên trên mobile
+        if (window.innerWidth < 768 && cart.length === 1) toggleMobileCart(true);
+    }
     renderCart();
 }
 
 function renderCart() {
     const container = document.getElementById('cart-items');
+    const badge = document.getElementById('mobile-cart-badge');
+    
     document.getElementById('cart-count').innerText = cart.length;
+    
+    // Cập nhật badge trên mobile
+    if(cart.length > 0) {
+        badge.innerText = cart.length;
+        badge.classList.remove('hidden');
+    } else {
+        badge.classList.add('hidden');
+    }
+
     container.innerHTML = cart.length ? cart.map(item => {
         const imgHtml = item.image ? `<img src="${item.image}" class="w-full h-full object-cover">` : `<i data-lucide="package" class="w-4 h-4 text-slate-300"></i>`;
         return `
         <div class="flex items-center gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-100">
             <div class="w-10 h-10 bg-white rounded-xl overflow-hidden flex items-center justify-center font-black text-blue-600 text-xs shadow-sm">${imgHtml}</div>
             <div class="flex-1 min-w-0">
-                <h6 class="font-bold text-slate-800 text-xs truncate">${item.name} <span class="text-blue-600 ml-1">x${item.qty}</span></h6>
-                <p class="text-[10px] font-black text-blue-500">${formatVND(item.price * item.qty)}</p>
+                <h6 class="font-bold text-slate-800 text-xs truncate">${item.name}</h6>
+                <div class="flex items-center gap-2 mt-1">
+                     <button onclick="updateQty('${item.id}', -1)" class="w-5 h-5 bg-white border border-slate-200 rounded flex items-center justify-center text-slate-500">-</button>
+                     <span class="text-[11px] font-black text-blue-600">${item.qty}</span>
+                     <button onclick="updateQty('${item.id}', 1)" class="w-5 h-5 bg-white border border-slate-200 rounded flex items-center justify-center text-slate-500">+</button>
+                     <span class="text-[10px] font-black text-slate-400 ml-auto">${formatVND(item.price * item.qty)}</span>
+                </div>
             </div>
-            <button onclick="removeFromCart('${item.id}'); event.stopPropagation();" class="text-slate-300 hover:text-red-500 transition-colors p-2"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+            <button onclick="removeFromCart('${item.id}'); event.stopPropagation();" class="text-slate-300 hover:text-red-500 p-2"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
         </div>
     `}).join('') : '<div class="h-40 flex flex-col items-center justify-center text-slate-300"><p class="text-xs font-bold">Giỏ trống</p></div>';
+    
     const total = cart.reduce((s, i) => s + (i.price * i.qty), 0);
     document.getElementById('cart-total').innerText = formatVND(total);
     lucide.createIcons();
+}
+
+function updateQty(id, delta) {
+    const item = cart.find(i => i.id === id);
+    const p = products.find(x => x.id === id);
+    if(item) {
+        if(delta > 0 && item.qty >= p.stock) return showToast("Hết hàng trong kho!", true);
+        item.qty += delta;
+        if(item.qty <= 0) cart = cart.filter(i => i.id !== id);
+        renderCart();
+    }
 }
 
 function removeFromCart(id) { 
@@ -324,10 +413,9 @@ function removeFromCart(id) {
 
 function clearCart() {
     if(cart.length === 0) return;
-    if(confirm("Bạn có chắc chắn muốn hủy toàn bộ giỏ hàng?")) {
-        cart = [];
-        renderCart();
-        showToast("Đã hủy đơn hàng");
+    if(confirm("Hủy đơn hàng?")) {
+        cart = []; renderCart();
+        if(window.innerWidth < 768) toggleMobileCart(false);
     }
 }
 
@@ -338,7 +426,10 @@ async function checkout() {
     const tx = { id: 'TX'+Date.now(), timestamp: new Date().toLocaleString('vi-VN'), items: cart.map(i => `${i.name}(${i.qty})`).join(','), total, totalcost };
     const stockUpdates = cart.map(i => ({ id: i.id, newStock: products.find(x => x.id === i.id).stock - i.qty }));
     const ok = await syncData({ action: 'addTransaction', transaction: tx, stockUpdates });
-    if(ok) { cart = []; renderCart(); }
+    if(ok) { 
+        cart = []; renderCart(); 
+        if(window.innerWidth < 768) toggleMobileCart(false);
+    }
 }
 
 function renderInventory() {
@@ -346,18 +437,18 @@ function renderInventory() {
         const imgHtml = p.image ? `<img src="${p.image}" class="w-10 h-10 object-cover rounded-lg shadow-sm">` : `<div class="w-10 h-10 bg-slate-50 rounded-lg flex items-center justify-center"><i data-lucide="package" class="w-4 h-4 text-slate-300"></i></div>`;
         return `
         <tr>
-            <td class="p-6">
+            <td class="p-4">
                 <div class="flex items-center gap-3">
                     ${imgHtml}
                     <div>
-                        <p class="font-black text-slate-800 text-sm">${p.name}</p>
-                        <p class="text-[10px] text-slate-400 font-bold uppercase">Mã: ${p.id}</p>
+                        <p class="font-black text-slate-800 text-xs">${p.name}</p>
+                        <p class="text-[9px] text-slate-400 font-bold">Mã: ${p.id}</p>
                     </div>
                 </div>
             </td>
-            <td class="p-6"><span class="px-3 py-1 rounded-lg text-xs font-black ${p.stock < 10 ? 'bg-red-50 text-red-500' : 'bg-slate-50 text-slate-600'}">${p.stock}</span></td>
-            <td class="p-6 text-sm font-black text-slate-700">${formatVND(p.price)}</td>
-            <td class="p-6"><button onclick="editStock('${p.id}')" class="text-blue-600 hover:bg-blue-50 p-2 rounded-xl transition-colors"><i data-lucide="edit-3" class="w-4 h-4"></i></button></td>
+            <td class="p-4"><span class="px-2 py-1 rounded-lg text-[10px] font-black ${p.stock < 10 ? 'bg-red-50 text-red-500' : 'bg-slate-50 text-slate-600'}">${p.stock}</span></td>
+            <td class="p-4 text-xs font-black text-slate-700">${formatVND(p.price)}</td>
+            <td class="p-4"><button onclick="editStock('${p.id}')" class="text-blue-600 p-2"><i data-lucide="edit-3" class="w-4 h-4"></i></button></td>
         </tr>
     `}).join('');
     lucide.createIcons();
@@ -367,16 +458,16 @@ function editStock(id) {
     const p = products.find(x => x.id.toString() === id.toString());
     if(p) { 
         showModal('modal-add-product');
-        document.getElementById('modal-title').innerText = "Chỉnh sửa sản phẩm";
+        document.getElementById('modal-title').innerText = "Sửa sản phẩm";
         document.getElementById('inp-id').value = p.id;
         document.getElementById('inp-id').readOnly = true; 
         document.getElementById('inp-name').value = p.name;
         document.getElementById('inp-image').value = p.image || '';
         document.getElementById('inp-price').value = p.price;
         document.getElementById('inp-cost').value = p.cost;
-        document.getElementById('label-stock').innerText = "Cập nhật tồn kho (Số lượng hiện tại: " + p.stock + ")";
+        document.getElementById('label-stock').innerText = "Số lượng tồn hiện tại: " + p.stock;
         document.getElementById('inp-stock').value = p.stock; 
-        document.getElementById('inp-image').oninput(); // Kích hoạt preview ảnh
+        document.getElementById('inp-image').oninput();
     }
 }
 
@@ -385,16 +476,11 @@ async function saveToSheet() {
     const image = document.getElementById('inp-image').value;
     const price = Number(document.getElementById('inp-price').value), cost = Number(document.getElementById('inp-cost').value);
     const stock = Number(document.getElementById('inp-stock').value);
-    
-    if(!id || !name) return showToast("Vui lòng nhập đủ thông tin!", true);
-
+    if(!id || !name) return showToast("Thiếu thông tin!", true);
     const isEdit = document.getElementById('inp-id').readOnly;
-    
-    // Đảm bảo payload luôn có image trong cả 2 trường hợp
     const payload = isEdit 
-        ? { action: 'updateStock', id, newStock: stock, name: name, price: price, cost: cost, image: image } 
-        : { action: 'addProduct', product: { id, name, price, cost, stock: stock, image: image } };
-        
+        ? { action: 'updateStock', id, newStock: stock, name, price, cost, image } 
+        : { action: 'addProduct', product: { id, name, price, cost, stock, image } };
     if(await syncData(payload)) hideModal('modal-add-product');
 }
 
@@ -412,21 +498,21 @@ function renderAccounting() {
     document.getElementById('acc-profit').innerText = formatVND(rev-cost);
     document.getElementById('acc-tax').innerText = formatVND(rev*0.1);
 
-    document.getElementById('history-table-body').innerHTML = list.length ? [...list].reverse().map(t => `
+    document.getElementById('history-table-body').innerHTML = list.length ? [...list].reverse().slice(0, 20).map(t => `
         <tr class="hover:bg-slate-50 transition-colors">
-            <td class="p-6"><p class="font-black text-slate-800 text-xs">${t.id}</p><p class="text-[10px] text-slate-400 font-bold">${t.timestamp}</p></td>
-            <td class="p-6"><p class="text-xs text-slate-600 truncate max-w-[200px]">${t.items}</p></td>
-            <td class="p-6 text-right font-black text-blue-600 text-sm">${formatVND(t.total)}</td>
-            <td class="p-6 text-center"><button onclick="printInvoice('${t.id}')" class="p-2 bg-slate-100 rounded-xl hover:bg-blue-600 hover:text-white"><i data-lucide="printer" class="w-4 h-4"></i></button></td>
+            <td class="p-4"><p class="font-black text-slate-800 text-[10px]">${t.id}</p><p class="text-[9px] text-slate-400 font-bold">${t.timestamp}</p></td>
+            <td class="p-4"><p class="text-[10px] text-slate-600 truncate max-w-[120px]">${t.items}</p></td>
+            <td class="p-4 text-right font-black text-blue-600 text-xs">${formatVND(t.total)}</td>
+            <td class="p-4 text-center"><button onclick="printInvoice('${t.id}')" class="p-2 bg-slate-100 rounded-lg"><i data-lucide="printer" class="w-4 h-4 text-slate-500"></i></button></td>
         </tr>
-    `).join('') : '<tr><td colspan="4" class="p-10 text-center text-slate-400 font-bold">Trống</td></tr>';
+    `).join('') : '<tr><td colspan="4" class="p-10 text-center text-slate-300 font-bold">Trống</td></tr>';
 
     const ctx = document.getElementById('revenueChart').getContext('2d');
     if(chart) chart.destroy();
     chart = new Chart(ctx, {
         type: 'line',
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } },
-        data: { labels: transactions.slice(-7).map(t => t.timestamp.split(' ')[1]), datasets: [{ label: 'Doanh thu', data: transactions.slice(-7).map(t => t.total), borderColor: '#3b82f6', tension: 0.4 }] }
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
+        data: { labels: transactions.slice(-7).map(t => t.timestamp.split(' ')[0]), datasets: [{ label: 'Doanh thu', data: transactions.slice(-7).map(t => t.total), borderColor: '#3b82f6', tension: 0.4, fill: true, backgroundColor: 'rgba(59, 130, 246, 0.05)' }] }
     });
     lucide.createIcons();
 }
@@ -434,7 +520,7 @@ function renderAccounting() {
 function printInvoice(id) {
     const t = transactions.find(x => x.id === id); if(!t) return;
     const w = window.open('', '_blank');
-    w.document.write(`<html><body style="font-family:sans-serif;padding:40px;"><h2>H-STORE 2026</h2><p>Mã HD: ${t.id}<br>Ngày: ${t.timestamp}</p><hr><div>Hàng hóa: ${t.items}</div><h3>Tổng tiền: ${formatVND(t.total)}</h3><script>window.print();window.close();<\/script></body></html>`);
+    w.document.write(`<html><body style="font-family:sans-serif;padding:20px;"><h2>H-STORE 2026</h2><p>Mã HD: ${t.id}<br>Ngày: ${t.timestamp}</p><hr><div>Hàng hóa: ${t.items}</div><h3>Tổng tiền: ${formatVND(t.total)}</h3><script>window.print();window.close();<\/script></body></html>`);
     w.document.close();
 }
 
@@ -443,6 +529,11 @@ function switchTab(t) {
     document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
     document.querySelectorAll('[data-mobile-tab]').forEach(i => i.classList.remove('text-blue-600'));
     document.getElementById(`tab-${t}`).classList.remove('hidden');
+    
+    // Ẩn/Hiện nút Giỏ hàng nổi dựa trên Tab
+    const fab = document.getElementById('mobile-cart-fab');
+    if(t === 'pos') fab.classList.remove('hidden'); else fab.classList.add('hidden');
+
     const pc = document.querySelector(`[data-tab="${t}"]`), mb = document.querySelector(`[data-mobile-tab="${t}"]`);
     if(pc) pc.classList.add('active'); if(mb) mb.classList.add('text-blue-600');
     const ts = { pos: 'Bán hàng', inventory: 'Kho hàng', accounting: 'Tài chính' };
@@ -466,15 +557,12 @@ function openScanner(ctx) {
 function stopScanner() { codeReader.reset(); document.getElementById('scanner-container').classList.add('hidden'); }
 
 function showModal(id) { 
-    if(id === 'modal-add-product') {
-        document.getElementById('modal-title').innerText = "Nhập hàng mới";
+    if(id === 'modal-add-product' && !document.getElementById('inp-id').readOnly) {
         document.getElementById('inp-id').value = '';
-        document.getElementById('inp-id').readOnly = false;
         document.getElementById('inp-name').value = '';
         document.getElementById('inp-image').value = '';
         document.getElementById('inp-price').value = '';
         document.getElementById('inp-cost').value = '';
-        document.getElementById('label-stock').innerText = "Số lượng nhập";
         document.getElementById('inp-stock').value = 1;
         document.getElementById('image-preview-box').innerHTML = '<i data-lucide="image" class="text-slate-300"></i>';
         lucide.createIcons();
@@ -485,12 +573,29 @@ function showModal(id) {
 function hideModal(id) { document.getElementById(id).classList.add('hidden'); }
 function formatVND(n) { return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n); }
 function logout() { localStorage.removeItem('hstore_auth'); location.reload(); }
-function toggleMobileCart() { document.getElementById('cart-panel').classList.toggle('open'); }
+
+function toggleMobileCart(forceOpen) { 
+    const panel = document.getElementById('cart-panel');
+    const overlay = document.getElementById('cart-overlay');
+    
+    if(forceOpen === true) {
+        panel.classList.add('open');
+        overlay.classList.add('show');
+    } else if(forceOpen === false) {
+        panel.classList.remove('open');
+        overlay.classList.remove('show');
+    } else {
+        panel.classList.toggle('open');
+        overlay.classList.toggle('show');
+    }
+}
+
 function showToast(msg, err = false) {
     const t = document.getElementById('toast'); t.innerText = msg;
-    t.className = `fixed top-8 left-1/2 -translate-x-1/2 px-8 py-4 rounded-2xl shadow-2xl transition-all font-bold ${err ? 'bg-red-600' : 'bg-slate-900'} text-white opacity-100 translate-y-0`;
+    t.className = `fixed top-8 left-1/2 -translate-x-1/2 px-8 py-4 rounded-2xl shadow-2xl transition-all font-bold ${err ? 'bg-red-600' : 'bg-slate-900'} text-white opacity-100 translate-y-0 z-[200]`;
     setTimeout(() => { t.classList.add('opacity-0', '-translate-y-24'); }, 3000);
 }
+
 function updateSyncStatus(s) {
     const dot = document.getElementById('sync-dot'), txt = document.getElementById('sync-text');
     dot.className = `w-2.5 h-2.5 rounded-full ${s==='online'?'bg-green-500':s==='syncing'?'bg-yellow-500 animate-pulse':'bg-red-500'}`;
