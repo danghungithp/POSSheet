@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>H-STORE 2026 | Smart Inventory & POS</title>
+    <title>H-STORE | Smart Inventory & POS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.344.0/dist/umd/lucide.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -23,6 +23,7 @@
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         @keyframes scan-line { 0% { top: 0; } 100% { top: 100%; } }
         .scan-anim { position: absolute; width: 100%; height: 2px; background: #3b82f6; box-shadow: 0 0 15px #3b82f6; animation: scan-line 2s linear infinite; }
+        .product-img { object-fit: cover; width: 100%; height: 100%; }
     </style>
 </head>
 <body class="antialiased text-slate-900">
@@ -114,7 +115,12 @@
                     <div id="cart-panel" class="cart-panel lg:block lg:static lg:w-[380px] lg:bg-white lg:rounded-[32px] lg:border lg:border-slate-100 flex flex-col max-h-[85vh] lg:max-h-none shadow-xl lg:shadow-none">
                         <div class="p-6 border-b border-slate-50 flex justify-between items-center">
                             <h3 class="font-black text-slate-800 flex items-center gap-2"><i data-lucide="shopping-bag" class="text-blue-600"></i> GIỎ HÀNG <span id="cart-count" class="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">0</span></h3>
-                            <button onclick="toggleMobileCart()" class="lg:hidden text-slate-400"><i data-lucide="chevron-down"></i></button>
+                            <div class="flex gap-2">
+                                <button onclick="clearCart()" class="text-red-500 hover:bg-red-50 p-2 rounded-xl transition-colors" title="Hủy đơn hàng">
+                                    <i data-lucide="trash-2" class="w-5 h-5"></i>
+                                </button>
+                                <button onclick="toggleMobileCart()" class="lg:hidden text-slate-400"><i data-lucide="chevron-down"></i></button>
+                            </div>
                         </div>
                         <div id="cart-items" class="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar min-h-[200px]"></div>
                         <div class="p-6 bg-slate-50/80 border-t border-slate-100 space-y-4">
@@ -175,16 +181,23 @@
 
     <!-- Modals & Overlays -->
     <div id="modal-add-product" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-md rounded-[32px] p-8 shadow-2xl">
-            <div class="flex justify-between items-center mb-6"><h3 class="text-xl font-black text-slate-800">Nhập hàng</h3><button onclick="hideModal('modal-add-product')" class="text-slate-400"><i data-lucide="x"></i></button></div>
+        <div class="bg-white w-full max-w-md rounded-[32px] p-8 shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div class="flex justify-between items-center mb-6"><h3 id="modal-title" class="text-xl font-black text-slate-800">Nhập hàng</h3><button onclick="hideModal('modal-add-product')" class="text-slate-400"><i data-lucide="x"></i></button></div>
             <div class="space-y-4">
                 <div class="relative"><label class="text-[10px] font-black text-slate-400 uppercase">Mã vạch</label><input type="text" id="inp-id" class="w-full p-4 bg-slate-50 rounded-2xl outline-none pr-14"><button onclick="openScanner('inventory')" class="absolute right-3 top-7 p-2 bg-blue-600 text-white rounded-xl shadow-lg"><i data-lucide="scan" class="w-5 h-5"></i></button></div>
                 <div><label class="text-[10px] font-black text-slate-400 uppercase">Tên sản phẩm</label><input type="text" id="inp-name" class="w-full p-4 bg-slate-50 rounded-2xl outline-none"></div>
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase">Link Ảnh sản phẩm (URL)</label>
+                    <input type="text" id="inp-image" placeholder="https://..." class="w-full p-4 bg-slate-50 rounded-2xl outline-none mb-2">
+                    <div id="image-preview-box" class="w-20 h-20 bg-slate-50 rounded-xl overflow-hidden border border-slate-100 flex items-center justify-center">
+                        <i data-lucide="image" class="text-slate-300"></i>
+                    </div>
+                </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div><label class="text-[10px] font-black text-slate-400 uppercase">Giá bán</label><input type="number" id="inp-price" class="w-full p-4 bg-slate-50 rounded-2xl outline-none"></div>
                     <div><label class="text-[10px] font-black text-slate-400 uppercase">Giá vốn</label><input type="number" id="inp-cost" class="w-full p-4 bg-slate-50 rounded-2xl outline-none"></div>
                 </div>
-                <div><label class="text-[10px] font-black text-slate-400 uppercase">Số lượng thêm</label><input type="number" id="inp-stock" value="1" class="w-full p-4 bg-slate-50 rounded-2xl outline-none"></div>
+                <div><label id="label-stock" class="text-[10px] font-black text-slate-400 uppercase">Số lượng thêm</label><input type="number" id="inp-stock" value="1" class="w-full p-4 bg-slate-50 rounded-2xl outline-none"></div>
                 <button id="btn-save" onclick="saveToSheet()" class="w-full bg-blue-600 text-white py-5 rounded-2xl font-black">LƯU THÔNG TIN</button>
             </div>
         </div>
@@ -201,7 +214,21 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbyFt1Js_-hQaD2AH_O99oke
 let products = [], transactions = [], cart = [], chart = null, activeScanner = 'pos';
 const codeReader = new ZXing.BrowserMultiFormatReader();
 
-window.onload = () => { lucide.createIcons(); if(localStorage.getItem('hstore_auth')) showDashboard(); };
+window.onload = () => { 
+    lucide.createIcons(); 
+    if(localStorage.getItem('hstore_auth')) showDashboard(); 
+    
+    // Preview ảnh khi nhập URL
+    document.getElementById('inp-image').oninput = function() {
+        const box = document.getElementById('image-preview-box');
+        if(this.value) {
+            box.innerHTML = `<img src="${this.value}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<i data-lucide=image class=text-red-300></i>';lucide.createIcons();">`;
+        } else {
+            box.innerHTML = `<i data-lucide="image" class="text-slate-300"></i>`;
+            lucide.createIcons();
+        }
+    };
+};
 
 function handleLogin(e) {
     e.preventDefault();
@@ -240,16 +267,18 @@ function renderAll() { renderPOS(); renderInventory(); renderAccounting(); }
 function renderPOS(filter = null) {
     const list = filter || products;
     const container = document.getElementById('pos-grid');
-    container.innerHTML = list.map(p => `
+    container.innerHTML = list.map(p => {
+        const imgHtml = p.image ? `<img src="${p.image}" class="product-img rounded-2xl">` : `<i data-lucide="package" class="w-8 h-8 text-slate-200"></i>`;
+        return `
         <div onclick="addToCart('${p.id}')" class="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm hover:border-blue-400 cursor-pointer active:scale-95 transition-all group">
-            <div class="aspect-square bg-slate-50 rounded-2xl flex items-center justify-center mb-3"><i data-lucide="package" class="w-8 h-8 text-slate-200"></i></div>
+            <div class="aspect-square bg-slate-50 rounded-2xl flex items-center justify-center mb-3 overflow-hidden">${imgHtml}</div>
             <h5 class="font-bold text-slate-800 text-xs line-clamp-2 h-8">${p.name}</h5>
             <div class="mt-2 flex justify-between items-center">
                 <span class="text-blue-600 font-black text-sm">${formatVND(p.price)}</span>
                 <span class="text-[10px] font-black ${p.stock <= 0 ? 'text-red-400' : 'text-slate-300'}">Tồn: ${p.stock}</span>
             </div>
         </div>
-    `).join('');
+    `}).join('');
     lucide.createIcons();
 }
 
@@ -270,19 +299,37 @@ function addToCart(id) {
 function renderCart() {
     const container = document.getElementById('cart-items');
     document.getElementById('cart-count').innerText = cart.length;
-    container.innerHTML = cart.length ? cart.map(item => `
+    container.innerHTML = cart.length ? cart.map(item => {
+        const imgHtml = item.image ? `<img src="${item.image}" class="w-full h-full object-cover">` : `<i data-lucide="package" class="w-4 h-4 text-slate-300"></i>`;
+        return `
         <div class="flex items-center gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-100">
-            <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center font-black text-blue-600 text-xs">${item.qty}x</div>
-            <div class="flex-1 min-w-0"><h6 class="font-bold text-slate-800 text-xs truncate">${item.name}</h6><p class="text-[10px] font-black text-blue-500">${formatVND(item.price)}</p></div>
-            <button onclick="removeFromCart('${item.id}')" class="text-slate-300 hover:text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+            <div class="w-10 h-10 bg-white rounded-xl overflow-hidden flex items-center justify-center font-black text-blue-600 text-xs shadow-sm">${imgHtml}</div>
+            <div class="flex-1 min-w-0">
+                <h6 class="font-bold text-slate-800 text-xs truncate">${item.name} <span class="text-blue-600 ml-1">x${item.qty}</span></h6>
+                <p class="text-[10px] font-black text-blue-500">${formatVND(item.price * item.qty)}</p>
+            </div>
+            <button onclick="removeFromCart('${item.id}'); event.stopPropagation();" class="text-slate-300 hover:text-red-500 transition-colors p-2"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
         </div>
-    `).join('') : '<div class="h-40 flex flex-col items-center justify-center text-slate-300"><p class="text-xs font-bold">Giỏ trống</p></div>';
+    `}).join('') : '<div class="h-40 flex flex-col items-center justify-center text-slate-300"><p class="text-xs font-bold">Giỏ trống</p></div>';
     const total = cart.reduce((s, i) => s + (i.price * i.qty), 0);
     document.getElementById('cart-total').innerText = formatVND(total);
     lucide.createIcons();
 }
 
-function removeFromCart(id) { cart = cart.filter(i => i.id !== id); renderCart(); }
+function removeFromCart(id) { 
+    cart = cart.filter(i => i.id.toString() !== id.toString()); 
+    renderCart(); 
+    showToast("Đã xóa khỏi giỏ");
+}
+
+function clearCart() {
+    if(cart.length === 0) return;
+    if(confirm("Bạn có chắc chắn muốn hủy toàn bộ giỏ hàng?")) {
+        cart = [];
+        renderCart();
+        showToast("Đã hủy đơn hàng");
+    }
+}
 
 async function checkout() {
     if(!cart.length) return;
@@ -295,14 +342,24 @@ async function checkout() {
 }
 
 function renderInventory() {
-    document.getElementById('inventory-table-body').innerHTML = products.map(p => `
+    document.getElementById('inventory-table-body').innerHTML = products.map(p => {
+        const imgHtml = p.image ? `<img src="${p.image}" class="w-10 h-10 object-cover rounded-lg shadow-sm">` : `<div class="w-10 h-10 bg-slate-50 rounded-lg flex items-center justify-center"><i data-lucide="package" class="w-4 h-4 text-slate-300"></i></div>`;
+        return `
         <tr>
-            <td class="p-6"><p class="font-black text-slate-800 text-sm">${p.name}</p><p class="text-[10px] text-slate-400 font-bold uppercase">Mã: ${p.id}</p></td>
+            <td class="p-6">
+                <div class="flex items-center gap-3">
+                    ${imgHtml}
+                    <div>
+                        <p class="font-black text-slate-800 text-sm">${p.name}</p>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase">Mã: ${p.id}</p>
+                    </div>
+                </div>
+            </td>
             <td class="p-6"><span class="px-3 py-1 rounded-lg text-xs font-black ${p.stock < 10 ? 'bg-red-50 text-red-500' : 'bg-slate-50 text-slate-600'}">${p.stock}</span></td>
             <td class="p-6 text-sm font-black text-slate-700">${formatVND(p.price)}</td>
-            <td class="p-6"><button onclick="editStock('${p.id}')" class="text-blue-600"><i data-lucide="edit-3" class="w-4 h-4"></i></button></td>
+            <td class="p-6"><button onclick="editStock('${p.id}')" class="text-blue-600 hover:bg-blue-50 p-2 rounded-xl transition-colors"><i data-lucide="edit-3" class="w-4 h-4"></i></button></td>
         </tr>
-    `).join('');
+    `}).join('');
     lucide.createIcons();
 }
 
@@ -310,20 +367,32 @@ function editStock(id) {
     const p = products.find(x => x.id.toString() === id.toString());
     if(p) { 
         showModal('modal-add-product');
+        document.getElementById('modal-title').innerText = "Chỉnh sửa sản phẩm";
         document.getElementById('inp-id').value = p.id;
+        document.getElementById('inp-id').readOnly = true; // Không cho sửa mã khi đang edit
         document.getElementById('inp-name').value = p.name;
+        document.getElementById('inp-image').value = p.image || '';
         document.getElementById('inp-price').value = p.price;
         document.getElementById('inp-cost').value = p.cost;
-        document.getElementById('inp-stock').value = 1;
+        document.getElementById('label-stock').innerText = "Cập nhật tồn kho (Số lượng hiện tại: " + p.stock + ")";
+        document.getElementById('inp-stock').value = p.stock; 
+        document.getElementById('inp-image').oninput(); // Update preview
     }
 }
 
 async function saveToSheet() {
     const id = document.getElementById('inp-id').value, name = document.getElementById('inp-name').value;
+    const image = document.getElementById('inp-image').value;
     const price = Number(document.getElementById('inp-price').value), cost = Number(document.getElementById('inp-cost').value);
-    const add = Number(document.getElementById('inp-stock').value);
-    const pExist = products.find(p => p.id.toString() === id.toString());
-    const payload = pExist ? { action: 'updateStock', id, newStock: Number(pExist.stock) + add } : { action: 'addProduct', product: { id, name, price, cost, stock: add } };
+    const stock = Number(document.getElementById('inp-stock').value);
+    
+    if(!id || !name) return showToast("Vui lòng nhập đủ thông tin!", true);
+
+    const isEdit = document.getElementById('inp-id').readOnly;
+    const payload = isEdit 
+        ? { action: 'updateStock', id, newStock: stock, name: name, price: price, cost: cost, image: image } 
+        : { action: 'addProduct', product: { id, name, price, cost, stock: stock, image: image } };
+        
     if(await syncData(payload)) hideModal('modal-add-product');
 }
 
@@ -354,8 +423,8 @@ function renderAccounting() {
     if(chart) chart.destroy();
     chart = new Chart(ctx, {
         type: 'line',
-        data: { labels: transactions.slice(-7).map(t => t.timestamp.split(' ')[1]), datasets: [{ label: 'Doanh thu', data: transactions.slice(-7).map(t => t.total), borderColor: '#3b82f6', tension: 0.4 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } },
+        data: { labels: transactions.slice(-7).map(t => t.timestamp.split(' ')[1]), datasets: [{ label: 'Doanh thu', data: transactions.slice(-7).map(t => t.total), borderColor: '#3b82f6', tension: 0.4 }] }
     });
     lucide.createIcons();
 }
@@ -395,13 +464,18 @@ function openScanner(ctx) {
 function stopScanner() { codeReader.reset(); document.getElementById('scanner-container').classList.add('hidden'); }
 
 function showModal(id) { 
-    // Xóa trắng form khi bấm nút Nhập hàng mới
     if(id === 'modal-add-product') {
+        document.getElementById('modal-title').innerText = "Nhập hàng mới";
         document.getElementById('inp-id').value = '';
+        document.getElementById('inp-id').readOnly = false;
         document.getElementById('inp-name').value = '';
+        document.getElementById('inp-image').value = '';
         document.getElementById('inp-price').value = '';
         document.getElementById('inp-cost').value = '';
+        document.getElementById('label-stock').innerText = "Số lượng nhập";
         document.getElementById('inp-stock').value = 1;
+        document.getElementById('image-preview-box').innerHTML = '<i data-lucide="image" class="text-slate-300"></i>';
+        lucide.createIcons();
     }
     document.getElementById(id).classList.remove('hidden'); 
 }
